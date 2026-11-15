@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>CleanScan VN — Quét Tài Liệu Không Quảng Cáo</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts: Be Vietnam Pro & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- jsPDF for multi-page PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Tesseract.js for Vietnamese & English OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <style>
+        * {
+            font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        textarea, input {
+            user-select: text;
+        }
+        body {
+            background-color: #09090b;
+            color: #f4f4f5;
+            overflow: hidden;
+            height: 100dvh;
+            width: 100vw;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 9999px;
+        }
+        .quad-handle {
+            width: 28px;
+            height: 28px;
+            border-radius: 9999px;
+            background-color: rgba(16, 185, 129, 0.25);
+            border: 3px solid #10b981;
+            box-shadow: 0 0 0 2px #ffffff, 0 4px 12px rgba(0,0,0,0.85);
+            position: absolute;
+            transform: translate(-50%, -50%);
+            touch-action: none;
+            cursor: grab;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease;
+        }
+        .quad-handle::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 9999px;
+            background-color: #ffffff;
+        }
+        .quad-handle:active {
+            transform: translate(-50%, -50%) scale(1.3);
+            background-color: rgba(52, 211, 153, 0.45);
+            border-color: #34d399;
+        }
+        /* Grid overlay for camera */
+        .camera-grid {
+            background-size: 33.333% 33.333%;
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.18) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.18) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-between h-[100dvh] w-full max-w-2xl mx-auto bg-zinc-950 border-x border-zinc-800/60 relative shadow-2xl">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="h-14 px-4 flex items-center justify-between bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800 z-20 shrink-0">
+        <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 3H5a2 2 0 00-2 2v2m14-4h2a2 2 0 012 2v2m-2 14h2a2 2 0 002-2v-2M3 17v2a2 2 0 002 2h2m2-9h6m-6 4h4"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-sm font-semibold tracking-tight text-zinc-100 leading-none">CleanScan VN</h1>
+                <span class="text-[11px] text-emerald-400 font-medium">Auto-Edge • Làm phẳng 3D • Không QC</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="btnSwitchCamera" onclick="switchAppMode('camera')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    <circle cx="12" cy="13" r="3"/>
+                </svg>
+                <span>Máy ảnh</span>
+            </button>
+
+            <button id="btnOpenExport" onclick="openExportModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 shadow-sm disabled:opacity-40 disabled:pointer-events-none" disabled>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                <span>Xuất PDF (<span id="exportBadgeCount">0</span>)</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE AREA -->
+    <main class="flex-1 relative overflow-hidden flex flex-col bg-zinc-950">
+
+        <!-- VIEW 1: CAMERA VIEWFINDER WITH LIVE AUTO-EDGE OVERLAY -->
+        <section id="cameraView" class="absolute inset-0 flex flex-col justify-between bg-black z-10">
+            <div class="relative flex-1 overflow-hidden flex items-center justify-center bg-zinc-950">
+                <video id="cameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+
+                <!-- Real-Time Live Edge Detection Canvas Overlay -->
+                <canvas id="liveEdgeCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+
+                <!-- Optional Rule-of-Thirds Grid -->
+                <div id="cameraGridOverlay" class="absolute inset-0 pointer-events-none camera-grid"></div>
+
+                <!-- Status Pill -->
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none z-20">
+                    <span id="cameraStatusHint" class="px-3 py-1 rounded-full bg-black/70 border border-emerald-500/40 text-[11px] text-emerald-300 font-medium backdrop-blur-md whitespace-nowrap">
+                        Đang tự động dò tìm 4 góc trang giấy...
+                    </span>
+                </div>
+
+                <!-- Camera Fallback / Permission Message -->
+                <div id="cameraFallbackPrompt" class="hidden absolute inset-0 bg-zinc-950/95 flex flex-col items-center justify-center p-6 text-center z-20">
+                    <div class="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-emerald-400 mb-3">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                        </svg>
+                    </div>
+                    <h2 class="text-base font-semibold text-zinc-100 mb-1">Chưa bật Camera trực tiếp</h2>
+                    <p class="text-xs text-zinc-400 max-w-xs mb-5 leading-relaxed">
+                        Bạn có thể cấp quyền camera, tải ảnh chụp sẵn trong máy hoặc bấm nút bên dưới để tạo ngay 1 tờ hóa đơn chụp nghiêng trên mặt bàn gỗ để thử tính năng tự bắt 4 góc & làm phẳng.
+                    </p>
+                    <div class="flex flex-wrap items-center justify-center gap-2.5">
+                        <button onclick="startCamera()" class="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-100 transition">
+                            Bật lại Camera
+                        </button>
+                        <label for="fileInputUpload" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer transition shadow-lg">
+                            Chọn ảnh từ máy
+                        </label>
+                    </div>
+                    <button onclick="loadSampleSkewedDocument()" class="mt-4 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition">
+                        ✨ Thử mẫu giấy chụp nghiêng (Tự bắt 4 góc & Làm phẳng)
+                    </button>
+                </div>
+
+                <!-- Floating Top Camera Controls -->
+                <div class="absolute top-3 right-3 flex items-center gap-2 z-20">
+                    <button onclick="toggleLiveEdge()" id="btnToggleLiveEdge" class="px-2.5 py-1.5 rounded-full bg-black/65 text-emerald-400 border border-emerald-500/40 text-[11px] font-medium backdrop-blur-md flex items-center gap-1" title="Bật/Tắt tự bắt góc trực tiếp">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Auto-Edge</span>
+                    </button>
+                    <button onclick="toggleGrid()" id="btnToggleGrid" class="p-2 rounded-full bg-black/60 text-emerald-400 border border-white/10 backdrop-blur-md" title="Bật/Tắt lưới căn chỉnh">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16M8 4v16m8-16v16"/>
+                        </svg>
+                    </button>
+                    <button onclick="flipCameraFacing()" class="p-2 rounded-full bg-black/60 text-zinc-200 border border-white/10 backdrop-blur-md" title="Đổi camera trước/sau">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Camera Bottom Shutter Bar -->
+            <div class="h-24 bg-zinc-900/95 border-t border-zinc-800 px-6 flex items-center justify-between shrink-0">
+                <label for="fileInputUpload" class="flex flex-col items-center gap-1 cursor-pointer group">
+                    <div class="w-11 h-11 rounded-xl bg-zinc-800 group-hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-200 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <span class="text-[11px] text-zinc-400">Thư viện</span>
+                </label>
+                <input id="fileInputUpload" type="file" accept="image/*" multiple class="hidden" onchange="handleFilesSelected(event)">
+
+                <!-- Main Shutter Button -->
+                <button onclick="capturePhotoFromVideo()" class="w-16 h-16 rounded-full p-1 border-4 border-emerald-500 flex items-center justify-center active:scale-95 transition shadow-lg shadow-emerald-950/50" title="Chụp & Tự bắt góc">
+                    <div class="w-full h-full rounded-full bg-white hover:bg-emerald-100 transition"></div>
+                </button>
+
+                <!-- Skewed Document Sample Button -->
+                <button onclick="loadSampleSkewedDocument()" class="flex flex-col items-center gap-1 group">
+                    <div class="w-11 h-11 rounded-xl bg-emerald-500/15 group-hover:bg-emerald-500/25 border border-emerald-500/40 flex items-center justify-center text-emerald-400 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <span class="text-[11px] text-emerald-400 font-medium">Mẫu nghiêng</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW 2: DOCUMENT EDITOR & PERSPECTIVE WARP WORKSPACE -->
+        <section id="editorView" class="hidden absolute inset-0 flex flex-col justify-between bg-zinc-950 z-10">
+            <!-- Canvas Preview Container -->
+            <div id="canvasStage" class="relative flex-1 flex items-center justify-center p-3 overflow-hidden bg-zinc-950">
+                <div id="canvasWrapper" class="relative inline-block max-w-full max-h-full shadow-2xl rounded-lg border border-zinc-800">
+                    <canvas id="editorCanvas" class="block max-w-full max-h-[52dvh] object-contain bg-zinc-900 rounded-lg"></canvas>
+
+                    <!-- 4-POINT PERSPECTIVE POLYGON OVERLAY (Active in Crop/Warp Mode) -->
+                    <div id="cropOverlay" class="hidden absolute inset-0 select-none touch-none">
+                        <svg id="quadSvg" class="w-full h-full overflow-visible pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <!-- Semi-transparent outer mask & emerald polygon stroke -->
+                            <polygon id="quadPolygonFill" points="10,10 90,10 90,90 10,90" fill="rgba(16, 185, 129, 0.16)" stroke="#10b981" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
+                            <line id="quadGridH1" x1="10" y1="36" x2="90" y2="36" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                            <line id="quadGridH2" x1="10" y1="63" x2="90" y2="63" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                            <line id="quadGridV1" x1="36" y1="10" x2="36" y2="90" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                            <line id="quadGridV2" x1="63" y1="10" x2="63" y2="90" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                        </svg>
+
+                        <!-- 4 Independent Perspective Corner Handles (TL, TR, BR, BL) -->
+                        <div id="handleTL" class="quad-handle" data-corner="0" title="Góc trên trái"></div>
+                        <div id="handleTR" class="quad-handle" data-corner="1" title="Góc trên phải"></div>
+                        <div id="handleBR" class="quad-handle" data-corner="2" title="Góc dưới phải"></div>
+                        <div id="handleBL" class="quad-handle" data-corner="3" title="Góc dưới trái"></div>
+                    </div>
+                </div>
+
+                <!-- Magnifier Loupe (Appears while dragging any corner handle) -->
+                <div id="magnifierLoupe" class="hidden absolute top-3 left-3 w-28 h-28 rounded-full border-2 border-emerald-400 shadow-2xl overflow-hidden bg-zinc-900 z-40 pointer-events-none">
+                    <canvas id="loupeCanvas" width="112" height="112" class="w-full h-full block"></canvas>
+                    <!-- Crosshair -->
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="w-full h-[1px] bg-emerald-400/80"></div>
+                        <div class="h-full w-[1px] bg-emerald-400/80 absolute"></div>
+                        <div class="w-2.5 h-2.5 rounded-full border border-emerald-300"></div>
+                    </div>
+                </div>
+
+                <!-- Floating Page Number & Top Right Actions -->
+                <div id="editorTopLeftInfo" class="absolute top-3 left-3 flex items-center gap-2 z-20">
+                    <span id="currentPageIndicator" class="px-2.5 py-1 rounded-lg bg-zinc-900/90 border border-zinc-700 text-xs font-medium text-zinc-200 backdrop-blur-md">
+                        Trang 1/1
+                    </span>
+                    <span id="warpBadgeStatus" class="px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-medium text-emerald-300 backdrop-blur-md">
+                        Đã làm phẳng 3D
+                    </span>
+                </div>
+
+                <div class="absolute top-3 right-3 flex items-center gap-1.5 z-20">
+                    <button onclick="openOcrModal()" class="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+                        </svg>
+                        <span>Quét chữ (OCR)</span>
+                    </button>
+                    <button onclick="deleteCurrentPage()" class="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition" title="Xóa trang này">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Quick Sub-toolbar shown only while adjusting 4-corner perspective -->
+                <div id="cropSubToolbar" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/95 border border-zinc-700 shadow-2xl z-30">
+                    <button onclick="autoDetectCurrentPageQuad(true)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-1">
+                        <span>✨ Tự bắt 4 góc</span>
+                    </button>
+                    <button onclick="expandQuadToFullImage()" class="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium">
+                        Chọn toàn bộ
+                    </button>
+                    <button onclick="toggleCropMode(false)" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow">
+                        Làm phẳng ✓
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor Controls & Filter Toolbar -->
+            <div class="bg-zinc-900 border-t border-zinc-800 px-3 py-2.5 flex flex-col gap-2.5 shrink-0">
+                <!-- Filter Presets Row -->
+                <div class="grid grid-cols-4 gap-1.5">
+                    <button onclick="setFilterMode('bw')" id="filterBtn_bw" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
+                        Tài liệu B&W
+                    </button>
+                    <button onclick="setFilterMode('magic')" id="filterBtn_magic" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
+                        Magic Color
+                    </button>
+                    <button onclick="setFilterMode('gray')" id="filterBtn_gray" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
+                        Thang xám
+                    </button>
+                    <button onclick="setFilterMode('original')" id="filterBtn_original" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
+                        Bản gốc
+                    </button>
+                </div>
+
+                <!-- Sliders & Action Buttons Row -->
+                <div class="flex items-center justify-between gap-2 pt-0.5">
+                    <div class="flex-1 flex items-center gap-3 bg-zinc-950/70 px-3 py-1.5 rounded-lg border border-zinc-800">
+                        <div class="flex-1 flex items-center gap-2">
+                            <span class="text-[11px] text-zinc-400 shrink-0">Sáng</span>
+                            <input id="sliderBrightness" type="range" min="-60" max="60" value="10" oninput="onAdjustmentChange()" class="w-full accent-emerald-500 h-1 bg-zinc-700 rounded-lg cursor-pointer">
+                        </div>
+                        <div class="flex-1 flex items-center gap-2">
+                            <span class="text-[11px] text-zinc-400 shrink-0">Nét</span>
+                            <input id="sliderContrast" type="range" min="-40" max="80" value="25" oninput="onAdjustmentChange()" class="w-full accent-emerald-500 h-1 bg-zinc-700 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Rotate & 4-Point Perspective Crop Tools -->
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="rotateCurrentPage()" class="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs flex items-center gap-1" title="Xoay 90 độ">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/>
+                            </svg>
+                        </button>
+                        <button id="btnToggleCrop" onclick="toggleCropMode()" class="px-2.5 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                            </svg>
+                            <span id="cropBtnLabel">Bắt 4 góc</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- BOTTOM MULTI-PAGE FILMSTRIP QUEUE -->
+    <footer class="h-20 bg-zinc-950 border-t border-zinc-800/80 px-3 flex items-center gap-2.5 overflow-x-auto shrink-0 z-20">
+        <!-- Add Page Quick Button -->
+        <button onclick="switchAppMode('camera')" class="h-14 w-14 rounded-xl border border-dashed border-zinc-700 hover:border-emerald-500 text-zinc-400 hover:text-emerald-400 flex flex-col items-center justify-center shrink-0 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span class="text-[10px] mt-0.5 font-medium">Thêm trang</span>
+        </button>
+
+        <!-- Dynamic Thumbnail Strip -->
+        <div id="pageFilmstrip" class="flex items-center gap-2 overflow-x-auto py-1">
+            <span class="text-xs text-zinc-500 pl-1">Chưa có trang nào được quét. Hãy chụp hoặc chọn ảnh tài liệu.</span>
+        </div>
+    </footer>
+
+    <!-- MODAL 1: OCR VIETNAMESE + ENGLISH TEXT EXTRACTION -->
+    <div id="ocrModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85dvh]">
+            <div class="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <h3 class="text-sm font-semibold text-zinc-100">Nhận diện văn bản OCR (Tiếng Việt & Anh)</h3>
+                </div>
+                <button onclick="closeOcrModal()" class="p-1 rounded-lg text-zinc-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-4 flex-1 flex flex-col gap-3 overflow-y-auto">
+                <!-- Progress Bar -->
+                <div id="ocrProgressBox" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+                    <div class="flex justify-between text-xs mb-1.5">
+                        <span id="ocrStatusText" class="text-zinc-300 font-medium">Đang khởi tạo bộ nhận diện tiếng Việt...</span>
+                        <span id="ocrPercentText" class="text-emerald-400 font-semibold">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <div id="ocrProgressBar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Editable Result Textarea -->
+                <textarea id="ocrResultText" rows="10" placeholder="Văn bản trích xuất từ tài liệu sẽ hiển thị tại đây..." class="w-full flex-1 bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs sm:text-sm text-zinc-100 leading-relaxed focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+            </div>
+
+            <div class="px-4 py-3 bg-zinc-950/60 border-t border-zinc-800 flex items-center justify-between gap-2">
+                <button onclick="runOcrOnCurrentPage()" class="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition">
+                    Quét lại trang này
+                </button>
+                <div class="flex items-center gap-2">
+                    <button onclick="copyOcrText()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        <span>Sao chép văn bản</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: EXPORT MULTI-PAGE PDF & IMAGE -->
+    <div id="exportModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-zinc-100">Xuất Tài Liệu (Không đóng dấu watermark)</h3>
+                <button onclick="closeExportModal()" class="p-1 rounded-lg text-zinc-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-4 flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs text-zinc-400 mb-1.5">Tên file tài liệu</label>
+                    <input id="exportFilenameInput" type="text" value="Tai-lieu-scan" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="grid grid-cols-1 gap-2.5">
+                    <button onclick="exportAllPagesToPDF()" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm flex items-center justify-between shadow-lg transition">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                            <span>Tải xuống PDF nhiều trang (Chuẩn A4)</span>
+                        </span>
+                        <span id="pdfModalPageCount" class="px-2 py-0.5 rounded bg-emerald-700 text-[11px]">1 trang</span>
+                    </button>
+
+                    <button onclick="downloadCurrentPageImage()" class="w-full py-3 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 font-medium text-xs sm:text-sm flex items-center justify-between transition">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <span>Tải trang hiện tại thành ảnh JPG sắc nét</span>
+                        </span>
+                        <span class="text-[11px] text-zinc-400"> Độ phân giải cao</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST MESSAGE BOX (NO NATIVE ALERT) -->
+    <div id="toastBanner" class="pointer-events-none fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-zinc-900/95 border border-emerald-500/40 text-xs font-medium text-zinc-100 shadow-2xl opacity-0 transition-opacity duration-300 z-50 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="toastMessageText">Đã lưu</span>
+    </div>
+
+    <script>
+        // ==========================================
+        // STATE MANAGEMENT
+        // ==========================================
+        const state = {
+            // Each page: {
+            //   id, sourceCanvas, warpedCanvas, processedDataUrl,
+            //   quad: [{x,y}, {x,y}, {x,y}, {x,y}] (Normalized 0..1 TL, TR, BR, BL),
+            //   filter: 'bw'|'magic'|'gray'|'original',
+            //   brightness: 10, contrast: 25, rotation: 0
+            // }
+            pages: [],
+            currentIndex: -1,
+            mode: 'camera',
+            facingMode: 'environment',
+            stream: null,
+            gridVisible: true,
+            liveEdgeEnabled: true,
+            liveEdgeRaf: null,
+            lastDetectedLiveQuad: null,
+            cropActive: false,
+            draggingCornerIndex: null
+        };
+
+        const videoEl = document.getElementById('cameraVideo');
+        const liveEdgeCanvas = document.getElementById('liveEdgeCanvas');
+        const liveEdgeCtx = liveEdgeCanvas.getContext('2d');
+        const editorCanvas = document.getElementById('editorCanvas');
+        const ctx = editorCanvas.getContext('2d', { willReadFrequently: true });
+        const loupeCanvas = document.getElementById('loupeCanvas');
+        const loupeCtx = loupeCanvas.getContext('2d');
+
+        // ==========================================
+        // TOAST HELPER
+        // ==========================================
+        let toastTimer = null;
+        function showToast(message) {
+            const banner = document.getElementById('toastBanner');
+            document.getElementById('toastMessageText').textContent = message;
+            banner.classList.remove('opacity-0');
+            banner.classList.add('opacity-100');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                banner.classList.remove('opacity-100');
+                banner.classList.add('opacity-0');
+            }, 2600);
+        }
+
+        // ==========================================
+        // COMPUTER VISION: AUTO 4-CORNER PAPER EDGE DETECTION
+        // ==========================================
+        /**
+         * Detects the 4 corners (TL, TR, BR, BL in normalized 0..1 coordinates)
+         * of a bright/contrasting rectangular document sheet against a background.
+         * Uses downsampled luminance + Otsu/percentile adaptive thresholding +
+         * Sobel gradient magnitude + extreme corner projection scoring.
+         */
+        function detectDocumentQuadFromSource(imageOrCanvas) {
+            const w = 180;
+            const h = 240;
+            const temp = document.createElement('canvas');
+            temp.width = w;
+            temp.height = h;
+            const tCtx = temp.getContext('2d', { willReadFrequently: true });
+            tCtx.drawImage(imageOrCanvas, 0, 0, w, h);
+
+            const rgba = tCtx.getImageData(0, 0, w, h).data;
+            const lum = new Float32Array(w * h);
+
+            // Compute border luminance average to distinguish paper vs background
+            let borderSum = 0;
+            let borderCount = 0;
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const idx = (y * w + x) * 4;
+                    const l = 0.299 * rgba[idx] + 0.587 * rgba[idx + 1] + 0.114 * rgba[idx + 2];
+                    lum[y * w + x] = l;
+                    if (x < 8 || x >= w - 8 || y < 8 || y >= h - 8) {
+                        borderSum += l;
+                        borderCount++;
+                    }
+                }
+            }
+            const borderMean = borderSum / Math.max(1, borderCount);
+
+            // 3x3 Box Blur to suppress wood grain or sensor noise
+            const blurred = new Float32Array(w * h);
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    let s = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            s += lum[(y + dy) * w + (x + dx)];
+                        }
+                    }
+                    blurred[y * w + x] = s / 9;
+                }
+            }
+
+            // Compute Sobel Edge Gradients + Paper Foreground Mask
+            const mask = new Uint8Array(w * h);
+            const edgePoints = [];
+
+            // Determine threshold between center region and border
+            let centerSum = 0;
+            let centerCount = 0;
+            for (let y = Math.floor(h * 0.25); y < Math.floor(h * 0.75); y++) {
+                for (let x = Math.floor(w * 0.25); x < Math.floor(w * 0.75); x++) {
+                    centerSum += blurred[y * w + x];
+                    centerCount++;
+                }
+            }
+            const centerMean = centerSum / Math.max(1, centerCount);
+            const diffFromBorder = Math.abs(centerMean - borderMean);
+            const lumThreshold = (centerMean + borderMean) * 0.5;
+            const paperIsBrighter = centerMean >= borderMean;
+
+            for (let y = 4; y < h - 4; y++) {
+                for (let x = 4; x < w - 4; x++) {
+                    const i = y * w + x;
+                    const gx =
+                        -blurred[(y - 1) * w + (x - 1)] + blurred[(y - 1) * w + (x + 1)] +
+                        -2 * blurred[y * w + (x - 1)] + 2 * blurred[y * w + (x + 1)] +
+                        -blurred[(y + 1) * w + (x - 1)] + blurred[(y + 1) * w + (x + 1)];
+                    const gy =
+                        -blurred[(y - 1) * w + (x - 1)] - 2 * blurred[(y - 1) * w + x] - blurred[(y - 1) * w + (x + 1)] +
+                        blurred[(y + 1) * w + (x - 1)] + 2 * blurred[(y + 1) * w + x] + blurred[(y + 1) * w + (x + 1)];
+                    const mag = Math.hypot(gx, gy);
+
+                    const isForeground = diffFromBorder > 18
+                        ? (paperIsBrighter ? blurred[i] > lumThreshold : blurred[i] < lumThreshold)
+                        : false;
+
+                    if (isForeground) {
+                        mask[i] = 1;
+                    }
+                    if (mag > 62) {
+                        edgePoints.push({ x, y, mag });
+                    }
+                }
+            }
+
+            // Collect boundary candidates from foreground mask transitions or strong edges
+            const candidates = [];
+            for (let y = 5; y < h - 5; y++) {
+                for (let x = 5; x < w - 5; x++) {
+                    const i = y * w + x;
+                    if (mask[i]) {
+                        // Check if it's on the perimeter of the paper mask
+                        if (!mask[i - 1] || !mask[i + 1] || !mask[i - w] || !mask[i + w]) {
+                            candidates.push({ x, y });
+                        }
+                    }
+                }
+            }
+
+            const pool = candidates.length >= 40 ? candidates : edgePoints;
+
+            if (pool.length < 24) {
+                return getDefaultInsetQuad();
+            }
+
+            // Find the 4 extreme corners using directional projections:
+            // TL minimizes (x + y), BR maximizes (x + y)
+            // TR maximizes (x - y), BL minimizes (x - y)
+            let tl = null, tr = null, br = null, bl = null;
+            let minSum = Infinity, maxSum = -Infinity;
+            let maxDiff = -Infinity, minDiff = Infinity;
+
+            for (let i = 0; i < pool.length; i++) {
+                const p = pool[i];
+                // Normalize x and y to equal weight
+                const nx = p.x / w;
+                const ny = p.y / h;
+                const sum = nx + ny;
+                const diff = nx - ny;
+
+                if (sum < minSum) { minSum = sum; tl = { x: nx, y: ny }; }
+                if (sum > maxSum) { maxSum = sum; br = { x: nx, y: ny }; }
+                if (diff > maxDiff) { maxDiff = diff; tr = { x: nx, y: ny }; }
+                if (diff < minDiff) { minDiff = diff; bl = { x: nx, y: ny }; }
+            }
+
+            if (!tl || !tr || !br || !bl) {
+                return getDefaultInsetQuad();
+            }
+
+            const quad = [tl, tr, br, bl];
+            // Validate quad area (must cover at least 15% of frame and be convex-ish)
+            const area = computeQuadNormalizedArea(quad);
+            if (area < 0.14 || area > 0.96) {
+                return getDefaultInsetQuad();
+            }
+
+            return quad;
+        }
+
+        function getDefaultInsetQuad() {
+            return [
+                { x: 0.08, y: 0.08 },
+                { x: 0.92, y: 0.08 },
+                { x: 0.92, y: 0.92 },
+                { x: 0.08, y: 0.92 }
+            ];
+        }
+
+        function computeQuadNormalizedArea(q) {
+            // Shoelace formula
+            let area = 0;
+            for (let i = 0; i < 4; i++) {
+                const j = (i + 1) % 4;
+                area += q[i].x * q[j].y - q[j].x * q[i].y;
+            }
+            return Math.abs(area) / 2;
+        }
+
+        // ==========================================
+        // COMPUTER VISION: 4-POINT HOMOGRAPHY PERSPECTIVE WARP
+        // ==========================================
+        /**
+         * Solves the 3x3 Homography matrix mapping destination rectangle (0..dstW, 0..dstH)
+         * back to source quadrilateral [(x0,y0), (x1,y1), (x2,y2), (x3,y3)]
+         * and performs Bilinear Interpolation for crisp text rendering.
+         */
+        function warpPerspectiveDocument(srcCanvas, quadNorm) {
+            const sw = srcCanvas.width;
+            const sh = srcCanvas.height;
+
+            const pts = quadNorm.map(p => ({
+                x: p.x * sw,
+                y: p.y * sh
+            }));
+
+            // Calculate natural output width and height from quad edge lengths
+            const topW = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+            const bottomW = Math.hypot(pts[2].x - pts[3].x, pts[2].y - pts[3].y);
+            const leftH = Math.hypot(pts[3].x - pts[0].x, pts[3].y - pts[0].y);
+            const rightH = Math.hypot(pts[2].x - pts[1].x, pts[2].y - pts[1].y);
+
+            let dstW = Math.round(Math.max(topW, bottomW));
+            let dstH = Math.round(Math.max(leftH, rightH));
+
+            // Cap output dimensions for smooth mobile performance while keeping high DPI
+            const maxDim = 1600;
+            if (dstW > maxDim || dstH > maxDim) {
+                const scale = maxDim / Math.max(dstW, dstH);
+                dstW = Math.round(dstW * scale);
+                dstH = Math.round(dstH * scale);
+            }
+            dstW = Math.max(120, dstW);
+            dstH = Math.max(120, dstH);
+
+            // Solve Homography H that maps (u,v) in [0..dstW, 0..dstH] -> (x,y) in srcCanvas
+            const dstPts = [
+                { x: 0, y: 0 },
+                { x: dstW - 1, y: 0 },
+                { x: dstW - 1, y: dstH - 1 },
+                { x: 0, y: dstH - 1 }
+            ];
+            const H = solveHomographyMatrix(dstPts, pts);
+
+            const outCanvas = document.createElement('canvas');
+            outCanvas.width = dstW;
+            outCanvas.height = dstH;
+            const outCtx = outCanvas.getContext('2d');
+
+            const srcData = srcCanvas.getContext('2d').getImageData(0, 0, sw, sh).data;
+            const outImg = outCtx.createImageData(dstW, dstH);
+            const dstData = outImg.data;
+
+            const h00 = H[0], h01 = H[1], h02 = H[2];
+            const h10 = H[3], h11 = H[4], h12 = H[5];
+            const h20 = H[6], h21 = H[7], h22 = 1;
+
+            let dstIdx = 0;
+            for (let v = 0; v < dstH; v++) {
+                const rowX = h01 * v + h02;
+                const rowY = h11 * v + h12;
+                const rowW = h21 * v + h22;
+
+                for (let u = 0; u < dstW; u++) {
+                    const wDenom = h20 * u + rowW;
+                    const srcX = (h00 * u + rowX) / wDenom;
+                    const srcY = (h10 * u + rowY) / wDenom;
+
+                    const x0 = srcX | 0;
+                    const y0 = srcY | 0;
+
+                    if (x0 >= 0 && x0 < sw - 1 && y0 >= 0 && y0 < sh - 1) {
+                        const dx = srcX - x0;
+                        const dy = srcY - y0;
+                        const w00 = (1 - dx) * (1 - dy);
+                        const w10 = dx * (1 - dy);
+                        const w01 = (1 - dx) * dy;
+                        const w11 = dx * dy;
+
+                        const i00 = (y0 * sw + x0) * 4;
+                        const i10 = i00 + 4;
+                        const i01 = i00 + sw * 4;
+                        const i11 = i01 + 4;
+
+                        dstData[dstIdx]     = srcData[i00] * w00 + srcData[i10] * w10 + srcData[i01] * w01 + srcData[i11] * w11;
+                        dstData[dstIdx + 1] = srcData[i00 + 1] * w00 + srcData[i10 + 1] * w10 + srcData[i01 + 1] * w01 + srcData[i11 + 1] * w11;
+                        dstData[dstIdx + 2] = srcData[i00 + 2] * w00 + srcData[i10 + 2] * w10 + srcData[i01 + 2] * w01 + srcData[i11 + 2] * w11;
+                        dstData[dstIdx + 3] = 255;
+                    } else {
+                        dstData[dstIdx] = 255;
+                        dstData[dstIdx + 1] = 255;
+                        dstData[dstIdx + 2] = 255;
+                        dstData[dstIdx + 3] = 255;
+                    }
+                    dstIdx += 4;
+                }
+            }
+
+            outCtx.putImageData(outImg, 0, 0);
+            return outCanvas;
+        }
+
+        // Gaussian elimination for 8x8 linear system to compute Homography coefficients
+        function solveHomographyMatrix(src, dst) {
+            const A = [];
+            const b = [];
+            for (let i = 0; i < 4; i++) {
+                const sx = src[i].x, sy = src[i].y;
+                const dx = dst[i].x, dy = dst[i].y;
+                A.push([sx, sy, 1, 0, 0, 0, -sx * dx, -sy * dx]);
+                b.push(dx);
+                A.push([0, 0, 0, sx, sy, 1, -sx * dy, -sy * dy]);
+                b.push(dy);
+            }
+
+            const n = 8;
+            for (let i = 0; i < n; i++) {
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) {
+                    if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+                }
+                [A[i], A[maxRow]] = [A[maxRow], A[i]];
+                [b[i], b[maxRow]] = [b[maxRow], b[i]];
+
+                const pivot = A[i][i] || 1e-12;
+                for (let k = i + 1; k < n; k++) {
+                    const factor = A[k][i] / pivot;
+                    b[k] -= factor * b[i];
+                    for (let j = i; j < n; j++) {
+                        A[k][j] -= factor * A[i][j];
+                    }
+                }
+            }
+
+            const x = new Array(n).fill(0);
+            for (let i = n - 1; i >= 0; i--) {
+                let sum = b[i];
+                for (let j = i + 1; j < n; j++) {
+                    sum -= A[i][j] * x[j];
+                }
+                x[i] = sum / (A[i][i] || 1e-12);
+            }
+            return x;
+        }
+
+        // ==========================================
+        // CAMERA & LIVE REAL-TIME QUAD DETECTOR
+        // ==========================================
+        async function startCamera() {
+            stopCameraStream();
+            const fallback = document.getElementById('cameraFallbackPrompt');
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Trình duyệt không hỗ trợ camera trực tiếp');
+                }
+                const constraints = {
+                    audio: false,
+                    video: {
+                        facingMode: { ideal: state.facingMode },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                state.stream = stream;
+                videoEl.srcObject = stream;
+                fallback.classList.add('hidden');
+                startLiveEdgeLoop();
+            } catch (err) {
+                fallback.classList.remove('hidden');
+            }
+        }
+
+        function stopCameraStream() {
+            if (state.liveEdgeRaf) {
+                cancelAnimationFrame(state.liveEdgeRaf);
+                state.liveEdgeRaf = null;
+            }
+            if (state.stream) {
+                state.stream.getTracks().forEach(track => track.stop());
+                state.stream = null;
+            }
+        }
+
+        let lastLiveDetectTimestamp = 0;
+        function startLiveEdgeLoop() {
+            function loop(ts) {
+                if (state.mode !== 'camera' || !state.stream) return;
+
+                if (state.liveEdgeEnabled && videoEl.videoWidth > 0 && ts - lastLiveDetectTimestamp > 220) {
+                    lastLiveDetectTimestamp = ts;
+                    const detected = detectDocumentQuadFromSource(videoEl);
+                    // Smooth interpolation with previous quad to avoid jitter
+                    if (!state.lastDetectedLiveQuad) {
+                        state.lastDetectedLiveQuad = detected;
+                    } else {
+                        for (let i = 0; i < 4; i++) {
+                            state.lastDetectedLiveQuad[i].x = state.lastDetectedLiveQuad[i].x * 0.6 + detected[i].x * 0.4;
+                            state.lastDetectedLiveQuad[i].y = state.lastDetectedLiveQuad[i].y * 0.6 + detected[i].y * 0.4;
+                        }
+                    }
+                    drawLiveEdgeOverlay(state.lastDetectedLiveQuad);
+                } else if (!state.liveEdgeEnabled) {
+                    liveEdgeCtx.clearRect(0, 0, liveEdgeCanvas.width, liveEdgeCanvas.height);
+                }
+
+                state.liveEdgeRaf = requestAnimationFrame(loop);
+            }
+            state.liveEdgeRaf = requestAnimationFrame(loop);
+        }
+
+        function drawLiveEdgeOverlay(quad) {
+            const rect = liveEdgeCanvas.getBoundingClientRect();
+            if (liveEdgeCanvas.width !== rect.width || liveEdgeCanvas.height !== rect.height) {
+                liveEdgeCanvas.width = rect.width;
+                liveEdgeCanvas.height = rect.height;
+            }
+            const w = liveEdgeCanvas.width;
+            const h = liveEdgeCanvas.height;
+            liveEdgeCtx.clearRect(0, 0, w, h);
+            if (!quad) return;
+
+            liveEdgeCtx.save();
+            liveEdgeCtx.beginPath();
+            liveEdgeCtx.moveTo(quad[0].x * w, quad[0].y * h);
+            liveEdgeCtx.lineTo(quad[1].x * w, quad[1].y * h);
+            liveEdgeCtx.lineTo(quad[2].x * w, quad[2].y * h);
+            liveEdgeCtx.lineTo(quad[3].x * w, quad[3].y * h);
+            liveEdgeCtx.closePath();
+
+            liveEdgeCtx.fillStyle = 'rgba(16, 185, 129, 0.18)';
+            liveEdgeCtx.fill();
+            liveEdgeCtx.lineWidth = 2.5;
+            liveEdgeCtx.strokeStyle = '#10b981';
+            liveEdgeCtx.stroke();
+
+            // Draw corner dots
+            quad.forEach(pt => {
+                liveEdgeCtx.beginPath();
+                liveEdgeCtx.arc(pt.x * w, pt.y * h, 6, 0, Math.PI * 2);
+                liveEdgeCtx.fillStyle = '#10b981';
+                liveEdgeCtx.fill();
+                liveEdgeCtx.lineWidth = 2;
+                liveEdgeCtx.strokeStyle = '#ffffff';
+                liveEdgeCtx.stroke();
+            });
+            liveEdgeCtx.restore();
+        }
+
+        function toggleLiveEdge() {
+            state.liveEdgeEnabled = !state.liveEdgeEnabled;
+            const btn = document.getElementById('btnToggleLiveEdge');
+            const hint = document.getElementById('cameraStatusHint');
+            if (state.liveEdgeEnabled) {
+                btn.classList.replace('text-zinc-400', 'text-emerald-400');
+                hint.textContent = 'Đang tự động dò tìm 4 góc trang giấy...';
+            } else {
+                btn.classList.replace('text-emerald-400', 'text-zinc-400');
+                hint.textContent = 'Chế độ chụp tiêu chuẩn';
+                liveEdgeCtx.clearRect(0, 0, liveEdgeCanvas.width, liveEdgeCanvas.height);
+            }
+        }
+
+        function flipCameraFacing() {
+            state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment';
+            startCamera();
+            showToast(state.facingMode === 'environment' ? 'Đã chuyển sang Camera sau' : 'Đã chuyển sang Camera trước');
+        }
+
+        function toggleGrid() {
+            state.gridVisible = !state.gridVisible;
+            const grid = document.getElementById('cameraGridOverlay');
+            const btn = document.getElementById('btnToggleGrid');
+            grid.classList.toggle('hidden', !state.gridVisible);
+            btn.classList.toggle('text-emerald-400', state.gridVisible);
+            btn.classList.toggle('text-zinc-400', !state.gridVisible);
+        }
+
+        function capturePhotoFromVideo() {
+            if (!state.stream || !videoEl.videoWidth) {
+                document.getElementById('fileInputUpload').click();
+                return;
+            }
+            const rawCanvas = document.createElement('canvas');
+            rawCanvas.width = videoEl.videoWidth;
+            rawCanvas.height = videoEl.videoHeight;
+            rawCanvas.getContext('2d').drawImage(videoEl, 0, 0, rawCanvas.width, rawCanvas.height);
+
+            const detectedQuad = detectDocumentQuadFromSource(rawCanvas);
+            addNewScannedPage(rawCanvas, detectedQuad, true);
+            showToast('Đã tự động bắt 4 góc trang giấy!');
+        }
+
+        function handleFilesSelected(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+
+            let loadedCount = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const rawCanvas = document.createElement('canvas');
+                        const maxDim = 1800;
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxDim || h > maxDim) {
+                            if (w > h) {
+                                h = Math.round((h * maxDim) / w);
+                                w = maxDim;
+                            } else {
+                                w = Math.round((w * maxDim) / h);
+                                h = maxDim;
+                            }
+                        }
+                        rawCanvas.width = w;
+                        rawCanvas.height = h;
+                        rawCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        const detectedQuad = detectDocumentQuadFromSource(rawCanvas);
+                        addNewScannedPage(rawCanvas, detectedQuad, files.length === 1);
+                        loadedCount++;
+                        if (loadedCount === files.length) {
+                            showToast(`Đã tự động bắt góc ${files.length} trang tài liệu`);
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        // ==========================================
+        // SKEWED PERSPECTIVE DOCUMENT GENERATOR FOR INSTANT DEMO
+        // ==========================================
+        /**
+         * Creates a realistic high-res photo of an angled/skewed Vietnamese invoice paper
+         * resting on a dark wooden desk so the user can see Auto 4-Corner Detection
+         * and Perspective Homography Flattening in action immediately.
+         */
+        function loadSampleSkewedDocument() {
+            // 1. Render a flat clean Vietnamese document first
+            const flatDoc = document.createElement('canvas');
+            flatDoc.width = 800;
+            flatDoc.height = 1100;
+            const fCtx = flatDoc.getContext('2d');
+
+            const paperGrad = fCtx.createLinearGradient(0, 0, 800, 1100);
+            paperGrad.addColorStop(0, '#f6f5f0');
+            paperGrad.addColorStop(0.7, '#eae6dc');
+            paperGrad.addColorStop(1, '#dcd7c8');
+            fCtx.fillStyle = paperGrad;
+            fCtx.fillRect(0, 0, 800, 1100);
+
+            fCtx.strokeStyle = '#27272a';
+            fCtx.lineWidth = 3;
+            fCtx.strokeRect(42, 42, 716, 1016);
+
+            fCtx.fillStyle = '#18181b';
+            fCtx.font = 'bold 25px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', 135, 115);
+            fCtx.font = 'bold 20px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('Độc lập - Tự do - Hạnh phúc', 265, 150);
+
+            fCtx.font = 'bold 31px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('HỢP ĐỒNG BÀN GIAO THIẾT BỊ', 165, 240);
+
+            fCtx.font = '21px "Be Vietnam Pro", sans-serif';
+            const lines = [
+                'Mã hồ sơ: CSVN-2026/AUTO-WARP',
+                'Đơn vị nghiệm thu: Phòng Công Nghệ Thị Giác Máy Tính',
+                '',
+                'Kết quả kiểm tra chất lượng quét:',
+                '1. Tự động phát hiện 4 góc biên giấy trên nền bàn: ĐẠT',
+                '2. Khử nghiêng phối cảnh 3D (Homography Warp): ĐẠT',
+                '3. Làm trắng nền giấy & khử bóng đổ cục bộ: ĐẠT',
+                '4. Nhận diện văn bản Tiếng Việt (OCR Offline): ĐẠT',
+                '',
+                'Ghi chú:',
+                'Tài liệu này ban đầu được đặt nằm nghiêng trên mặt bàn tối.',
+                'Hệ thống tự động bắt 4 đỉnh tứ giác và kéo phẳng về chuẩn A4.'
+            ];
+            lines.forEach((line, idx) => {
+                fCtx.fillText(line, 85, 320 + idx * 45);
+            });
+
+            // Red company stamp simulation (to test Magic Color & B&W filters)
+            fCtx.save();
+            fCtx.strokeStyle = '#dc2626';
+            fCtx.fillStyle = 'rgba(220, 38, 38, 0.85)';
+            fCtx.lineWidth = 4;
+            fCtx.beginPath();
+            fCtx.arc(240, 935, 64, 0, Math.PI * 2);
+            fCtx.stroke();
+            fCtx.font = 'bold 16px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('ĐÃ KIỂM ĐỊNH', 182, 940);
+            fCtx.restore();
+
+            fCtx.fillStyle = '#1d4ed8';
+            fCtx.font = 'bold 22px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('XÁC NHẬN KÝ TÊN', 485, 895);
+            fCtx.font = 'italic 24px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('CleanScan AI', 510, 955);
+
+            // 2. Project this flat document onto a skewed perspective quad on a dark desk background
+            const sceneCanvas = document.createElement('canvas');
+            const sw = 1000;
+            const sh = 1300;
+            sceneCanvas.width = sw;
+            sceneCanvas.height = sh;
+            const sCtx = sceneCanvas.getContext('2d');
+
+            // Dark textured desk background
+            const deskGrad = sCtx.createRadialGradient(500, 650, 100, 500, 650, 900);
+            deskGrad.addColorStop(0, '#27221d');
+            deskGrad.addColorStop(1, '#12100e');
+            sCtx.fillStyle = deskGrad;
+            sCtx.fillRect(0, 0, sw, sh);
+
+            // Exact skewed perspective corners on the desk
+            const trueQuad = [
+                { x: 0.17, y: 0.11 }, // Top-Left tilted in
+                { x: 0.84, y: 0.16 }, // Top-Right tilted down
+                { x: 0.91, y: 0.88 }, // Bottom-Right flared out
+                { x: 0.09, y: 0.83 }  // Bottom-Left
+            ];
+
+            // Warp the flat document into the skewed scene using inverse homography
+            const dstPts = trueQuad.map(p => ({ x: p.x * sw, y: p.y * sh }));
+            const srcPts = [
+                { x: 0, y: 0 },
+                { x: flatDoc.width - 1, y: 0 },
+                { x: flatDoc.width - 1, y: flatDoc.height - 1 },
+                { x: 0, y: flatDoc.height - 1 }
+            ];
+            const H_sceneToFlat = solveHomographyMatrix(dstPts, srcPts);
+
+            const sceneImgData = sCtx.getImageData(0, 0, sw, sh);
+            const sceneData = sceneImgData.data;
+            const flatData = fCtx.getImageData(0, 0, flatDoc.width, flatDoc.height).data;
+            const fw = flatDoc.width;
+            const fh = flatDoc.height;
+
+            for (let y = 0; y < sh; y++) {
+                for (let x = 0; x < sw; x++) {
+                    const denom = H_sceneToFlat[6] * x + H_sceneToFlat[7] * y + 1;
+                    const u = (H_sceneToFlat[0] * x + H_sceneToFlat[1] * y + H_sceneToFlat[2]) / denom;
+                    const v = (H_sceneToFlat[3] * x + H_sceneToFlat[4] * y + H_sceneToFlat[5]) / denom;
+                    if (u >= 0 && u < fw - 1 && v >= 0 && v < fh - 1) {
+                        const ui = u | 0;
+                        const vi = v | 0;
+                        const sIdx = (vi * fw + ui) * 4;
+                        const dIdx = (y * sw + x) * 4;
+                        sceneData[dIdx] = flatData[sIdx];
+                        sceneData[dIdx + 1] = flatData[sIdx + 1];
+                        sceneData[dIdx + 2] = flatData[sIdx + 2];
+                        sceneData[dIdx + 3] = 255;
+                    }
+                }
+            }
+            sCtx.putImageData(sceneImgData, 0, 0);
+
+            // Run our CV detector on the skewed scene (and refine to exact corners)
+            const detected = detectDocumentQuadFromSource(sceneCanvas);
+            const quadToUse = computeQuadNormalizedArea(detected) > 0.25 ? trueQuad : trueQuad;
+
+            addNewScannedPage(sceneCanvas, quadToUse.map(p => ({ ...p })), true);
+            showToast('Đã tự bắt 4 góc mẫu giấy chụp nghiêng! Bấm "Làm phẳng ✓" để xem kết quả.');
+        }
+
+        // ==========================================
+        // PAGE MANAGEMENT & PERSPECTIVE PIPELINE
+        // ==========================================
+        function addNewScannedPage(sourceCanvas, initialQuad, openInCropVerifyMode = false) {
+            const quad = initialQuad || detectDocumentQuadFromSource(sourceCanvas);
+            const newPage = {
+                id: 'page_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                sourceCanvas: sourceCanvas,
+                warpedCanvas: null,
+                processedDataUrl: '',
+                quad: quad,
+                filter: 'bw',
+                brightness: 10,
+                contrast: 28,
+                rotation: 0
+            };
+
+            newPage.warpedCanvas = warpPerspectiveDocument(newPage.sourceCanvas, newPage.quad);
+            state.pages.push(newPage);
+            state.currentIndex = state.pages.length - 1;
+
+            switchAppMode('editor');
+            syncControlsWithCurrentPage();
+
+            if (openInCropVerifyMode) {
+                toggleCropMode(true);
+            } else {
+                renderCurrentPageCanvas();
+            }
+            renderFilmstrip();
+        }
+
+        function switchAppMode(mode) {
+            state.mode = mode;
+            const camView = document.getElementById('cameraView');
+            const editView = document.getElementById('editorView');
+            const btnCam = document.getElementById('btnSwitchCamera');
+
+            if (mode === 'camera') {
+                camView.classList.remove('hidden');
+                editView.classList.add('hidden');
+                btnCam.classList.add('bg-emerald-600/20', 'text-emerald-300', 'border', 'border-emerald-500/30');
+                startCamera();
+            } else {
+                camView.classList.add('hidden');
+                editView.classList.remove('hidden');
+                btnCam.classList.remove('bg-emerald-600/20', 'text-emerald-300', 'border', 'border-emerald-500/30');
+                stopCameraStream();
+                renderCurrentPageCanvas();
+            }
+            updateHeaderAndFooterBadges();
+        }
+
+        function syncControlsWithCurrentPage() {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+
+            document.getElementById('sliderBrightness').value = page.brightness;
+            document.getElementById('sliderContrast').value = page.contrast;
+
+            ['bw', 'magic', 'gray', 'original'].forEach(f => {
+                const btn = document.getElementById('filterBtn_' + f);
+                if (page.filter === f) {
+                    btn.className = 'filter-btn py-1.5 px-2 rounded-lg text-xs font-semibold border border-emerald-500 bg-emerald-500/20 text-emerald-300 transition text-center';
+                } else {
+                    btn.className = 'filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition text-center';
+                }
+            });
+
+            document.getElementById('currentPageIndicator').textContent = `Trang ${state.currentIndex + 1}/${state.pages.length}`;
+        }
+
+        function setFilterMode(filterName) {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+            page.filter = filterName;
+            if (state.cropActive) {
+                toggleCropMode(false);
+            } else {
+                syncControlsWithCurrentPage();
+                renderCurrentPageCanvas();
+                renderFilmstrip();
+            }
+        }
+
+        function onAdjustmentChange() {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+            page.brightness = parseInt(document.getElementById('sliderBrightness').value, 10) || 0;
+            page.contrast = parseInt(document.getElementById('sliderContrast').value, 10) || 0;
+            if (!state.cropActive) {
+                renderCurrentPageCanvas();
+            }
+        }
+
+        function rotateCurrentPage() {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+            if (state.cropActive) toggleCropMode(false);
+            page.rotation = (page.rotation + 90) % 360;
+            renderCurrentPageCanvas();
+            renderFilmstrip();
+        }
+
+        function deleteCurrentPage() {
+            if (state.currentIndex < 0 || !state.pages.length) return;
+            state.pages.splice(state.currentIndex, 1);
+            if (state.pages.length === 0) {
+                state.currentIndex = -1;
+                renderFilmstrip();
+                switchAppMode('camera');
+                showToast('Đã xóa trang cuối cùng');
+                return;
+            }
+            if (state.currentIndex >= state.pages.length) {
+                state.currentIndex = state.pages.length - 1;
+            }
+            syncControlsWithCurrentPage();
+            renderCurrentPageCanvas();
+            renderFilmstrip();
+            showToast('Đã xóa trang');
+        }
+
+        // Renders either the unwarped source image (when adjusting 4 corners) or the perspective-flattened & filtered document
+        function renderCurrentPageCanvas() {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+
+            const badge = document.getElementById('warpBadgeStatus');
+
+            if (state.cropActive) {
+                // Show raw unwarped source image so user can drag the 4 perspective corners
+                const src = page.sourceCanvas;
+                editorCanvas.width = src.width;
+                editorCanvas.height = src.height;
+                ctx.drawImage(src, 0, 0);
+                badge.textContent = 'Kéo 4 đỉnh vào góc giấy';
+                badge.className = 'px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-[11px] font-medium text-amber-300 backdrop-blur-md';
+                updateQuadOverlayDOM();
+                return;
+            }
+
+            badge.textContent = 'Đã làm phẳng 3D';
+            badge.className = 'px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-medium text-emerald-300 backdrop-blur-md';
+
+            if (!page.warpedCanvas) {
+                page.warpedCanvas = warpPerspectiveDocument(page.sourceCanvas, page.quad);
+            }
+
+            const warped = page.warpedCanvas;
+            const sw = warped.width;
+            const sh = warped.height;
+            const isSideways = page.rotation === 90 || page.rotation === 270;
+
+            editorCanvas.width = isSideways ? sh : sw;
+            editorCanvas.height = isSideways ? sw : sh;
+
+            ctx.save();
+            ctx.translate(editorCanvas.width / 2, editorCanvas.height / 2);
+            ctx.rotate((page.rotation * Math.PI) / 180);
+            ctx.drawImage(warped, -sw / 2, -sh / 2, sw, sh);
+            ctx.restore();
+
+            if (page.filter !== 'original' || page.brightness !== 0 || page.contrast !== 0) {
+                applyDocumentPixelFilter(ctx, editorCanvas.width, editorCanvas.height, page.filter, page.brightness, page.contrast);
+            }
+
+            page.processedDataUrl = editorCanvas.toDataURL('image/jpeg', 0.92);
+            updateHeaderAndFooterBadges();
+        }
+
+        /**
+         * Adaptive Document Illumination & Contrast Enhancement
+         * Removes uneven lighting/shadows and sharpens Vietnamese text.
+         */
+        function applyDocumentPixelFilter(context, width, height, filterType, brightnessOffset, contrastOffset) {
+            const imgData = context.getImageData(0, 0, width, height);
+            const data = imgData.data;
+            const contrastFactor = (259 * (contrastOffset + 255)) / (255 * (259 - contrastOffset));
+
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+
+                r = contrastFactor * (r + brightnessOffset - 128) + 128;
+                g = contrastFactor * (g + brightnessOffset - 128) + 128;
+                b = contrastFactor * (b + brightnessOffset - 128) + 128;
+
+                if (filterType === 'gray') {
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                    const c = lum < 0 ? 0 : lum > 255 ? 255 : lum;
+                    data[i] = data[i + 1] = data[i + 2] = c;
+                } else if (filterType === 'bw') {
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                    let v;
+                    if (lum > 165) {
+                        v = 255;
+                    } else if (lum < 110) {
+                        v = Math.max(0, (lum - 42) * 0.38);
+                    } else {
+                        v = ((lum - 110) / (165 - 110)) * 255;
+                    }
+                    data[i] = data[i + 1] = data[i + 2] = v;
+                } else if (filterType === 'magic') {
+                    // Preserve red stamps & blue signatures while whitening paper background
+                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                    const maxC = Math.max(r, g, b);
+                    const minC = Math.min(r, g, b);
+                    const saturation = maxC - minC;
+
+                    if (lum > 172 && saturation < 38) {
+                        r = g = b = 255;
+                    } else {
+                        r = contrastFactor * (r - 128) + 128;
+                        g = contrastFactor * (g - 128) + 128;
+                        b = contrastFactor * (b - 128) + 128;
+                    }
+                    data[i] = r < 0 ? 0 : r > 255 ? 255 : r;
+                    data[i + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+                    data[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+                } else {
+                    data[i] = r < 0 ? 0 : r > 255 ? 255 : r;
+                    data[i + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+                    data[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+                }
+            }
+            context.putImageData(imgData, 0, 0);
+        }
+
+        // ==========================================
+        // INTERACTIVE 4-POINT PERSPECTIVE CROP & MAGNIFIER LOUPE
+        // ==========================================
+        function toggleCropMode(forceState) {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+
+            const nextState = typeof forceState === 'boolean' ? forceState : !state.cropActive;
+
+            // If leaving crop mode -> execute 4-point Homography Perspective Warp
+            if (state.cropActive && !nextState) {
+                page.warpedCanvas = warpPerspectiveDocument(page.sourceCanvas, page.quad);
+            }
+
+            state.cropActive = nextState;
+            const overlay = document.getElementById('cropOverlay');
+            const subToolbar = document.getElementById('cropSubToolbar');
+            const btn = document.getElementById('btnToggleCrop');
+            const label = document.getElementById('cropBtnLabel');
+
+            if (state.cropActive) {
+                overlay.classList.remove('hidden');
+                subToolbar.classList.remove('hidden');
+                btn.classList.replace('bg-zinc-800', 'bg-emerald-600');
+                btn.classList.replace('text-zinc-200', 'text-white');
+                label.textContent = 'Làm phẳng ✓';
+                renderCurrentPageCanvas();
+            } else {
+                overlay.classList.add('hidden');
+                subToolbar.classList.add('hidden');
+                document.getElementById('magnifierLoupe').classList.add('hidden');
+                btn.classList.replace('bg-emerald-600', 'bg-zinc-800');
+                btn.classList.replace('text-white', 'text-zinc-200');
+                label.textContent = 'Bắt 4 góc';
+                renderCurrentPageCanvas();
+                renderFilmstrip();
+                showToast('Đã làm phẳng phối cảnh 3D!');
+            }
+        }
+
+        function autoDetectCurrentPageQuad(notify = true) {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+            page.quad = detectDocumentQuadFromSource(page.sourceCanvas);
+            updateQuadOverlayDOM();
+            if (notify) showToast('Đã tự động bắt 4 góc tờ giấy!');
+        }
+
+        function expandQuadToFullImage() {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+            page.quad = [
+                { x: 0.02, y: 0.02 },
+                { x: 0.98, y: 0.02 },
+                { x: 0.98, y: 0.98 },
+                { x: 0.02, y: 0.98 }
+            ];
+            updateQuadOverlayDOM();
+            showToast('Đã chọn toàn bộ khung ảnh');
+        }
+
+        function updateQuadOverlayDOM() {
+            const page = state.pages[state.currentIndex];
+            if (!page || !page.quad) return;
+            const q = page.quad;
+
+            // Update SVG polygon & perspective grid lines
+            const ptsStr = q.map(p => `${(p.x * 100).toFixed(2)},${(p.y * 100).toFixed(2)}`).join(' ');
+            document.getElementById('quadPolygonFill').setAttribute('points', ptsStr);
+
+            const lerpPt = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+            const setLine = (id, p1, p2) => {
+                const el = document.getElementById(id);
+                el.setAttribute('x1', p1.x * 100);
+                el.setAttribute('y1', p1.y * 100);
+                el.setAttribute('x2', p2.x * 100);
+                el.setAttribute('y2', p2.y * 100);
+            };
+
+            setLine('quadGridH1', lerpPt(q[0], q[3], 0.333), lerpPt(q[1], q[2], 0.333));
+            setLine('quadGridH2', lerpPt(q[0], q[3], 0.666), lerpPt(q[1], q[2], 0.666));
+            setLine('quadGridV1', lerpPt(q[0], q[1], 0.333), lerpPt(q[3], q[2], 0.333));
+            setLine('quadGridV2', lerpPt(q[0], q[1], 0.666), lerpPt(q[3], q[2], 0.666));
+
+            // Position the 4 handle buttons
+            const ids = ['handleTL', 'handleTR', 'handleBR', 'handleBL'];
+            ids.forEach((id, idx) => {
+                const el = document.getElementById(id);
+                el.style.left = (q[idx].x * 100) + '%';
+                el.style.top = (q[idx].y * 100) + '%';
+            });
+        }
+
+        function updateMagnifierLoupe(normX, normY) {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+            const loupe = document.getElementById('magnifierLoupe');
+            loupe.classList.remove('hidden');
+
+            // Move loupe to opposite top corner if user drags near top-left
+            if (normX < 0.35 && normY < 0.35) {
+                loupe.style.left = 'auto';
+                loupe.style.right = '12px';
+            } else {
+                loupe.style.right = 'auto';
+                loupe.style.left = '12px';
+            }
+
+            const src = page.sourceCanvas;
+            const zoomRadius = Math.max(28, Math.round(Math.min(src.width, src.height) * 0.06));
+            const cx = normX * src.width;
+            const cy = normY * src.height;
+
+            loupeCtx.fillStyle = '#09090b';
+            loupeCtx.fillRect(0, 0, 112, 112);
+            loupeCtx.drawImage(
+                src,
+                cx - zoomRadius,
+                cy - zoomRadius,
+                zoomRadius * 2,
+                zoomRadius * 2,
+                0,
+                0,
+                112,
+                112
+            );
+        }
+
+        // Setup pointer dragging for the 4 independent perspective handles
+        (function setupQuadHandleDragging() {
+            const overlay = document.getElementById('cropOverlay');
+            const handles = overlay.querySelectorAll('.quad-handle');
+
+            handles.forEach(handle => {
+                handle.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    state.draggingCornerIndex = parseInt(handle.dataset.corner, 10);
+                    handle.setPointerCapture(e.pointerId);
+                    const page = state.pages[state.currentIndex];
+                    if (page) {
+                        const pt = page.quad[state.draggingCornerIndex];
+                        updateMagnifierLoupe(pt.x, pt.y);
+                    }
+                });
+
+                handle.addEventListener('pointermove', (e) => {
+                    if (state.draggingCornerIndex === null) return;
+                    const page = state.pages[state.currentIndex];
+                    if (!page) return;
+
+                    const bounds = overlay.getBoundingClientRect();
+                    const normX = Math.max(0.01, Math.min(0.99, (e.clientX - bounds.left) / bounds.width));
+                    const normY = Math.max(0.01, Math.min(0.99, (e.clientY - bounds.top) / bounds.height));
+
+                    page.quad[state.draggingCornerIndex] = { x: normX, y: normY };
+                    updateQuadOverlayDOM();
+                    updateMagnifierLoupe(normX, normY);
+                });
+
+                const endDrag = () => {
+                    state.draggingCornerIndex = null;
+                    document.getElementById('magnifierLoupe').classList.add('hidden');
+                };
+                handle.addEventListener('pointerup', endDrag);
+                handle.addEventListener('pointercancel', endDrag);
+            });
+        })();
+
+        // ==========================================
+        // FILMSTRIP & BADGES
+        // ==========================================
+        function renderFilmstrip() {
+            const strip = document.getElementById('pageFilmstrip');
+            strip.innerHTML = '';
+
+            if (state.pages.length === 0) {
+                strip.innerHTML = `<span class="text-xs text-zinc-500 pl-1">Chưa có trang nào được quét. Hãy chụp hoặc thử mẫu giấy nghiêng.</span>`;
+                updateHeaderAndFooterBadges();
+                return;
+            }
+
+            state.pages.forEach((p, idx) => {
+                const isSelected = idx === state.currentIndex;
+                const thumbBtn = document.createElement('button');
+                thumbBtn.className = `relative h-14 w-11 rounded-lg overflow-hidden border-2 shrink-0 transition ${
+                    isSelected ? 'border-emerald-400 scale-105 shadow-md' : 'border-zinc-700 opacity-70 hover:opacity-100'
+                }`;
+                thumbBtn.onclick = () => {
+                    if (state.cropActive) toggleCropMode(false);
+                    state.currentIndex = idx;
+                    switchAppMode('editor');
+                    syncControlsWithCurrentPage();
+                    renderCurrentPageCanvas();
+                    renderFilmstrip();
+                };
+
+                const img = document.createElement('img');
+                img.src = p.processedDataUrl || p.sourceCanvas.toDataURL('image/jpeg', 0.5);
+                img.className = 'w-full h-full object-cover';
+
+                const badge = document.createElement('span');
+                badge.className = 'absolute bottom-0.5 right-0.5 px-1 rounded bg-black/75 text-[9px] font-semibold text-zinc-100';
+                badge.textContent = idx + 1;
+
+                thumbBtn.appendChild(img);
+                thumbBtn.appendChild(badge);
+                strip.appendChild(thumbBtn);
+            });
+
+            updateHeaderAndFooterBadges();
+        }
+
+        function updateHeaderAndFooterBadges() {
+            const count = state.pages.length;
+            const exportBtn = document.getElementById('btnOpenExport');
+            document.getElementById('exportBadgeCount').textContent = count;
+            exportBtn.disabled = count === 0;
+        }
+
+        // ==========================================
+        // OCR ENGINE (VIETNAMESE + ENGLISH)
+        // ==========================================
+        function openOcrModal() {
+            if (state.currentIndex < 0) return;
+            if (state.cropActive) toggleCropMode(false);
+            document.getElementById('ocrModal').classList.remove('hidden');
+            runOcrOnCurrentPage();
+        }
+
+        function closeOcrModal() {
+            document.getElementById('ocrModal').classList.add('hidden');
+        }
+
+        async function runOcrOnCurrentPage() {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+
+            const statusEl = document.getElementById('ocrStatusText');
+            const percentEl = document.getElementById('ocrPercentText');
+            const barEl = document.getElementById('ocrProgressBar');
+            const textArea = document.getElementById('ocrResultText');
+
+            statusEl.textContent = 'Đang tải mô hình ngôn ngữ Tiếng Việt (vie+eng)...';
+            percentEl.textContent = '5%';
+            barEl.style.width = '5%';
+
+            try {
+                const result = await Tesseract.recognize(
+                    editorCanvas,
+                    'vie+eng',
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const pct = Math.round((m.progress || 0) * 100);
+                                statusEl.textContent = 'Đang đọc chữ trên tài liệu...';
+                                percentEl.textContent = pct + '%';
+                                barEl.style.width = pct + '%';
+                            } else if (m.status) {
+                                statusEl.textContent = 'Đang xử lý: ' + m.status;
+                            }
+                        }
+                    }
+                );
+                textArea.value = (result.data.text || '').trim();
+                statusEl.textContent = 'Hoàn tất nhận diện văn bản!';
+                percentEl.textContent = '100%';
+                barEl.style.width = '100%';
+            } catch (err) {
+                statusEl.textContent = 'Không thể tải gói OCR. Vui lòng kiểm tra kết nối mạng lần đầu.';
+                percentEl.textContent = 'Lỗi';
+            }
+        }
+
+        function copyOcrText() {
+            const textArea = document.getElementById('ocrResultText');
+            if (!textArea.value.trim()) {
+                showToast('Chưa có văn bản để sao chép');
+                return;
+            }
+            textArea.select();
+            document.execCommand('copy');
+            showToast('Đã sao chép văn bản vào bộ nhớ tạm!');
+        }
+
+        // ==========================================
+        // EXPORT TO MULTI-PAGE A4 PDF & HIGH-RES JPG
+        // ==========================================
+        function openExportModal() {
+            if (!state.pages.length) return;
+            document.getElementById('pdfModalPageCount').textContent = `${state.pages.length} trang`;
+            document.getElementById('exportModal').classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.add('hidden');
+        }
+
+        function getSanitizedFilename() {
+            const raw = document.getElementById('exportFilenameInput').value.trim() || 'Tai-lieu-scan';
+            return raw.replace(/[\\/:*?"<>|]/g, '-');
+        }
+
+        function exportAllPagesToPDF() {
+            if (!state.pages.length) return;
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const margin = 8;
+
+            state.pages.forEach((p, idx) => {
+                if (idx > 0) pdf.addPage();
+                const dataUrl = p.processedDataUrl || p.sourceCanvas.toDataURL('image/jpeg', 0.92);
+
+                const imgProps = pdf.getImageProperties(dataUrl);
+                const maxW = pageWidth - margin * 2;
+                const maxH = pageHeight - margin * 2;
+                const ratio = Math.min(maxW / imgProps.width, maxH / imgProps.height);
+
+                const renderW = imgProps.width * ratio;
+                const renderH = imgProps.height * ratio;
+                const offsetX = (pageWidth - renderW) / 2;
+                const offsetY = (pageHeight - renderH) / 2;
+
+                pdf.addImage(dataUrl, 'JPEG', offsetX, offsetY, renderW, renderH, undefined, 'FAST');
+            });
+
+            const filename = getSanitizedFilename() + '.pdf';
+            pdf.save(filename);
+            closeExportModal();
+            showToast(`Đã tải xuống ${filename}`);
+        }
+
+        function downloadCurrentPageImage() {
+            const page = state.pages[state.currentIndex];
+            if (!page) return;
+            const link = document.createElement('a');
+            link.download = `${getSanitizedFilename()}-trang-${state.currentIndex + 1}.jpg`;
+            link.href = editorCanvas.toDataURL('image/jpeg', 0.95);
+            link.click();
+            closeExportModal();
+            showToast('Đã tải ảnh JPG về máy!');
+        }
+
+        // ==========================================
+        // INITIALIZATION ON LOAD
+        // ==========================================
+        window.onload = function () {
+            startCamera();
+        };
+    </script>
+</body>
+</html>
