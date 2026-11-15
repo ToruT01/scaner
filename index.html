@@ -3,58 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#09090b">
+    <meta name="theme-color" content="#0b1315">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>CleanScan VN — Quét Tài Liệu Không Quảng Cáo</title>
+    <title>CamScanner VN Pro — Không Quảng Cáo & Không Watermark</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Google Fonts: Be Vietnam Pro & Inter -->
+    <!-- Google Fonts: Be Vietnam Pro & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <!-- jsPDF for multi-page PDF export -->
+    <!-- jsPDF for multi-page PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <!-- Tesseract.js for Vietnamese & English OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cs: {
+                            bg: '#0b1315',
+                            card: '#132024',
+                            elevated: '#1b2d33',
+                            teal: '#19B394',
+                            tealDark: '#128C73',
+                            cyan: '#00E5FF',
+                            amber: '#F59E0B'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         * {
-            font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, sans-serif;
             -webkit-tap-highlight-color: transparent;
             user-select: none;
+        }
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
         }
         textarea, input {
             user-select: text;
         }
         body {
-            background-color: #09090b;
-            color: #f4f4f5;
+            background-color: #0b1315;
+            color: #f0f6f7;
             overflow: hidden;
             height: 100dvh;
             width: 100vw;
         }
         ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+            width: 4px;
+            height: 4px;
         }
         ::-webkit-scrollbar-track {
-            background: #18181b;
+            background: transparent;
         }
         ::-webkit-scrollbar-thumb {
-            background: #3f3f46;
+            background: rgba(25, 179, 148, 0.35);
             border-radius: 9999px;
         }
-        .quad-handle {
+        /* CamScanner 8-Point Crop Handles */
+        .cs-corner-handle {
             width: 28px;
             height: 28px;
             border-radius: 9999px;
-            background-color: rgba(16, 185, 129, 0.25);
-            border: 3px solid #10b981;
+            background-color: rgba(25, 179, 148, 0.25);
+            border: 3px solid #19B394;
             box-shadow: 0 0 0 2px #ffffff, 0 4px 12px rgba(0,0,0,0.85);
             position: absolute;
             transform: translate(-50%, -50%);
@@ -64,450 +90,864 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.1s ease;
         }
-        .quad-handle::after {
+        .cs-corner-handle::after {
             content: '';
             width: 6px;
             height: 6px;
             border-radius: 9999px;
             background-color: #ffffff;
         }
-        .quad-handle:active {
+        .cs-corner-handle:active {
             transform: translate(-50%, -50%) scale(1.3);
-            background-color: rgba(52, 211, 153, 0.45);
-            border-color: #34d399;
+            border-color: #00E5FF;
+            background-color: rgba(0, 229, 255, 0.35);
         }
-        /* Grid overlay for camera */
+        .cs-edge-handle {
+            width: 22px;
+            height: 12px;
+            border-radius: 9999px;
+            background-color: #19B394;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.75);
+            position: absolute;
+            transform: translate(-50%, -50%);
+            touch-action: none;
+            cursor: pointer;
+            z-index: 25;
+        }
+        .cs-edge-handle.vertical {
+            width: 12px;
+            height: 22px;
+        }
         .camera-grid {
             background-size: 33.333% 33.333%;
-            background-image: 
+            background-image:
                 linear-gradient(to right, rgba(255,255,255,0.18) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(255,255,255,0.18) 1px, transparent 1px);
         }
+        @keyframes scanLaser {
+            0% { top: 6%; opacity: 0.2; }
+            50% { top: 92%; opacity: 0.95; }
+            100% { top: 6%; opacity: 0.2; }
+        }
+        .laser-line {
+            position: absolute;
+            left: 4%;
+            right: 4%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00E5FF, #19B394, #00E5FF, transparent);
+            box-shadow: 0 0 12px #19B394;
+            animation: scanLaser 2.6s ease-in-out infinite;
+            pointer-events: none;
+        }
     </style>
 </head>
-<body class="flex flex-col justify-between h-[100dvh] w-full max-w-2xl mx-auto bg-zinc-950 border-x border-zinc-800/60 relative shadow-2xl">
+<body class="flex flex-col h-[100dvh] w-full max-w-[480px] mx-auto bg-cs-bg border-x border-white/10 relative shadow-2xl overflow-hidden">
 
-    <!-- TOP NAVIGATION BAR -->
-    <header class="h-14 px-4 flex items-center justify-between bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800 z-20 shrink-0">
-        <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 3H5a2 2 0 00-2 2v2m14-4h2a2 2 0 012 2v2m-2 14h2a2 2 0 002-2v-2M3 17v2a2 2 0 002 2h2m2-9h6m-6 4h4"/>
-                </svg>
-            </div>
-            <div>
-                <h1 class="text-sm font-semibold tracking-tight text-zinc-100 leading-none">CleanScan VN</h1>
-                <span class="text-[11px] text-emerald-400 font-medium">Auto-Edge • Làm phẳng 3D • Không QC</span>
-            </div>
-        </div>
+    <!-- HIDDEN FILE INPUT FOR GALLERY UPLOAD -->
+    <input id="globalFileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFilesUploaded(event)">
 
-        <div class="flex items-center gap-2">
-            <button id="btnSwitchCamera" onclick="switchAppMode('camera')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                    <circle cx="12" cy="13" r="3"/>
-                </svg>
-                <span>Máy ảnh</span>
-            </button>
-
-            <button id="btnOpenExport" onclick="openExportModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 shadow-sm disabled:opacity-40 disabled:pointer-events-none" disabled>
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                </svg>
-                <span>Xuất PDF (<span id="exportBadgeCount">0</span>)</span>
-            </button>
-        </div>
-    </header>
-
-    <!-- MAIN WORKSPACE AREA -->
-    <main class="flex-1 relative overflow-hidden flex flex-col bg-zinc-950">
-
-        <!-- VIEW 1: CAMERA VIEWFINDER WITH LIVE AUTO-EDGE OVERLAY -->
-        <section id="cameraView" class="absolute inset-0 flex flex-col justify-between bg-black z-10">
-            <div class="relative flex-1 overflow-hidden flex items-center justify-center bg-zinc-950">
-                <video id="cameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
-
-                <!-- Real-Time Live Edge Detection Canvas Overlay -->
-                <canvas id="liveEdgeCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
-
-                <!-- Optional Rule-of-Thirds Grid -->
-                <div id="cameraGridOverlay" class="absolute inset-0 pointer-events-none camera-grid"></div>
-
-                <!-- Status Pill -->
-                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none z-20">
-                    <span id="cameraStatusHint" class="px-3 py-1 rounded-full bg-black/70 border border-emerald-500/40 text-[11px] text-emerald-300 font-medium backdrop-blur-md whitespace-nowrap">
-                        Đang tự động dò tìm 4 góc trang giấy...
-                    </span>
+    <!-- ===================================================== -->
+    <!-- VIEW 1: CAMSCANNER HOME LIBRARY & QUICK ACTIONS       -->
+    <!-- ===================================================== -->
+    <section id="viewHome" class="flex-1 flex flex-col h-full overflow-hidden z-10">
+        <!-- CamScanner Top Brand + Search Header -->
+        <header class="pt-3 pb-2.5 px-4 bg-cs-card border-b border-white/10 shrink-0">
+            <div class="flex items-center justify-between mb-2.5">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cs-teal to-cs-tealDark flex items-center justify-center text-white font-bold text-base shadow-md shadow-cs-teal/20">
+                        CS
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <h1 class="text-base font-bold tracking-tight text-white leading-none">CamScanner VN</h1>
+                            <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-cs-teal/20 text-cs-teal border border-cs-teal/40">PRO FREE</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Không quảng cáo • Không watermark • Offline</p>
+                    </div>
                 </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="toggleHomeLayout()" id="btnToggleLayout" class="p-2 rounded-xl bg-cs-elevated text-slate-300 hover:text-white border border-white/5 transition" title="Đổi chế độ xem Danh sách / Lưới">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
 
-                <!-- Camera Fallback / Permission Message -->
-                <div id="cameraFallbackPrompt" class="hidden absolute inset-0 bg-zinc-950/95 flex flex-col items-center justify-center p-6 text-center z-20">
-                    <div class="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-emerald-400 mb-3">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <!-- Search Bar -->
+            <div class="relative">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input id="searchDocInput" type="text" oninput="renderHomeDocumentList()" placeholder="Tìm tên tài liệu, đề thi, CCCD hoặc nội dung OCR..." class="w-full pl-9 pr-8 py-2 rounded-xl bg-cs-bg/90 border border-white/10 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cs-teal transition">
+            </div>
+        </header>
+
+        <!-- CamScanner Signature Quick Action Matrix -->
+        <div class="px-3 py-3 bg-cs-card/60 border-b border-white/5 shrink-0">
+            <div class="grid grid-cols-5 gap-1.5 text-center">
+                <button onclick="openCameraWithMode('single')" class="flex flex-col items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/5 active:scale-95 transition">
+                    <div class="w-11 h-11 rounded-2xl bg-cs-teal/20 border border-cs-teal/40 flex items-center justify-center text-cs-teal shadow-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <circle cx="12" cy="13" r="3"/>
                         </svg>
                     </div>
-                    <h2 class="text-base font-semibold text-zinc-100 mb-1">Chưa bật Camera trực tiếp</h2>
-                    <p class="text-xs text-zinc-400 max-w-xs mb-5 leading-relaxed">
-                        Bạn có thể cấp quyền camera, tải ảnh chụp sẵn trong máy hoặc bấm nút bên dưới để tạo ngay 1 tờ hóa đơn chụp nghiêng trên mặt bàn gỗ để thử tính năng tự bắt 4 góc & làm phẳng.
-                    </p>
-                    <div class="flex flex-wrap items-center justify-center gap-2.5">
-                        <button onclick="startCamera()" class="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-100 transition">
-                            Bật lại Camera
-                        </button>
-                        <label for="fileInputUpload" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer transition shadow-lg">
-                            Chọn ảnh từ máy
-                        </label>
+                    <span class="text-[11px] font-medium text-slate-200 leading-tight">Quét thông minh</span>
+                </button>
+
+                <button onclick="openCameraWithMode('batch')" class="flex flex-col items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/5 active:scale-95 transition">
+                    <div class="w-11 h-11 rounded-2xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 shadow-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
                     </div>
-                    <button onclick="loadSampleSkewedDocument()" class="mt-4 px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition">
-                        ✨ Thử mẫu giấy chụp nghiêng (Tự bắt 4 góc & Làm phẳng)
-                    </button>
-                </div>
+                    <span class="text-[11px] font-medium text-slate-200 leading-tight">Chụp hàng loạt</span>
+                </button>
 
-                <!-- Floating Top Camera Controls -->
-                <div class="absolute top-3 right-3 flex items-center gap-2 z-20">
-                    <button onclick="toggleLiveEdge()" id="btnToggleLiveEdge" class="px-2.5 py-1.5 rounded-full bg-black/65 text-emerald-400 border border-emerald-500/40 text-[11px] font-medium backdrop-blur-md flex items-center gap-1" title="Bật/Tắt tự bắt góc trực tiếp">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span>Auto-Edge</span>
-                    </button>
-                    <button onclick="toggleGrid()" id="btnToggleGrid" class="p-2 rounded-full bg-black/60 text-emerald-400 border border-white/10 backdrop-blur-md" title="Bật/Tắt lưới căn chỉnh">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16M8 4v16m8-16v16"/>
+                <button onclick="openCameraWithMode('idcard')" class="flex flex-col items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/5 active:scale-95 transition">
+                    <div class="w-11 h-11 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/>
                         </svg>
-                    </button>
-                    <button onclick="flipCameraFacing()" class="p-2 rounded-full bg-black/60 text-zinc-200 border border-white/10 backdrop-blur-md" title="Đổi camera trước/sau">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
+                    </div>
+                    <span class="text-[11px] font-medium text-slate-200 leading-tight">Thẻ CCCD 2 mặt</span>
+                </button>
 
-            <!-- Camera Bottom Shutter Bar -->
-            <div class="h-24 bg-zinc-900/95 border-t border-zinc-800 px-6 flex items-center justify-between shrink-0">
-                <label for="fileInputUpload" class="flex flex-col items-center gap-1 cursor-pointer group">
-                    <div class="w-11 h-11 rounded-xl bg-zinc-800 group-hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-200 transition">
+                <button onclick="triggerGalleryUpload()" class="flex flex-col items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/5 active:scale-95 transition">
+                    <div class="w-11 h-11 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shadow-sm">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                         </svg>
                     </div>
-                    <span class="text-[11px] text-zinc-400">Thư viện</span>
-                </label>
-                <input id="fileInputUpload" type="file" accept="image/*" multiple class="hidden" onchange="handleFilesSelected(event)">
-
-                <!-- Main Shutter Button -->
-                <button onclick="capturePhotoFromVideo()" class="w-16 h-16 rounded-full p-1 border-4 border-emerald-500 flex items-center justify-center active:scale-95 transition shadow-lg shadow-emerald-950/50" title="Chụp & Tự bắt góc">
-                    <div class="w-full h-full rounded-full bg-white hover:bg-emerald-100 transition"></div>
+                    <span class="text-[11px] font-medium text-slate-200 leading-tight">Nhập từ máy</span>
                 </button>
 
-                <!-- Skewed Document Sample Button -->
-                <button onclick="loadSampleSkewedDocument()" class="flex flex-col items-center gap-1 group">
-                    <div class="w-11 h-11 rounded-xl bg-emerald-500/15 group-hover:bg-emerald-500/25 border border-emerald-500/40 flex items-center justify-center text-emerald-400 transition">
+                <button onclick="generateSkewedDemoAndEnterCrop()" class="flex flex-col items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/5 active:scale-95 transition">
+                    <div class="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-300 shadow-sm">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
-                    <span class="text-[11px] text-emerald-400 font-medium">Mẫu nghiêng</span>
+                    <span class="text-[11px] font-semibold text-cs-teal leading-tight">Thử Mẫu Nghiêng</span>
                 </button>
             </div>
-        </section>
-
-        <!-- VIEW 2: DOCUMENT EDITOR & PERSPECTIVE WARP WORKSPACE -->
-        <section id="editorView" class="hidden absolute inset-0 flex flex-col justify-between bg-zinc-950 z-10">
-            <!-- Canvas Preview Container -->
-            <div id="canvasStage" class="relative flex-1 flex items-center justify-center p-3 overflow-hidden bg-zinc-950">
-                <div id="canvasWrapper" class="relative inline-block max-w-full max-h-full shadow-2xl rounded-lg border border-zinc-800">
-                    <canvas id="editorCanvas" class="block max-w-full max-h-[52dvh] object-contain bg-zinc-900 rounded-lg"></canvas>
-
-                    <!-- 4-POINT PERSPECTIVE POLYGON OVERLAY (Active in Crop/Warp Mode) -->
-                    <div id="cropOverlay" class="hidden absolute inset-0 select-none touch-none">
-                        <svg id="quadSvg" class="w-full h-full overflow-visible pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <!-- Semi-transparent outer mask & emerald polygon stroke -->
-                            <polygon id="quadPolygonFill" points="10,10 90,10 90,90 10,90" fill="rgba(16, 185, 129, 0.16)" stroke="#10b981" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
-                            <line id="quadGridH1" x1="10" y1="36" x2="90" y2="36" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
-                            <line id="quadGridH2" x1="10" y1="63" x2="90" y2="63" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
-                            <line id="quadGridV1" x1="36" y1="10" x2="36" y2="90" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
-                            <line id="quadGridV2" x1="63" y1="10" x2="63" y2="90" stroke="rgba(52, 211, 153, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
-                        </svg>
-
-                        <!-- 4 Independent Perspective Corner Handles (TL, TR, BR, BL) -->
-                        <div id="handleTL" class="quad-handle" data-corner="0" title="Góc trên trái"></div>
-                        <div id="handleTR" class="quad-handle" data-corner="1" title="Góc trên phải"></div>
-                        <div id="handleBR" class="quad-handle" data-corner="2" title="Góc dưới phải"></div>
-                        <div id="handleBL" class="quad-handle" data-corner="3" title="Góc dưới trái"></div>
-                    </div>
-                </div>
-
-                <!-- Magnifier Loupe (Appears while dragging any corner handle) -->
-                <div id="magnifierLoupe" class="hidden absolute top-3 left-3 w-28 h-28 rounded-full border-2 border-emerald-400 shadow-2xl overflow-hidden bg-zinc-900 z-40 pointer-events-none">
-                    <canvas id="loupeCanvas" width="112" height="112" class="w-full h-full block"></canvas>
-                    <!-- Crosshair -->
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <div class="w-full h-[1px] bg-emerald-400/80"></div>
-                        <div class="h-full w-[1px] bg-emerald-400/80 absolute"></div>
-                        <div class="w-2.5 h-2.5 rounded-full border border-emerald-300"></div>
-                    </div>
-                </div>
-
-                <!-- Floating Page Number & Top Right Actions -->
-                <div id="editorTopLeftInfo" class="absolute top-3 left-3 flex items-center gap-2 z-20">
-                    <span id="currentPageIndicator" class="px-2.5 py-1 rounded-lg bg-zinc-900/90 border border-zinc-700 text-xs font-medium text-zinc-200 backdrop-blur-md">
-                        Trang 1/1
-                    </span>
-                    <span id="warpBadgeStatus" class="px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-medium text-emerald-300 backdrop-blur-md">
-                        Đã làm phẳng 3D
-                    </span>
-                </div>
-
-                <div class="absolute top-3 right-3 flex items-center gap-1.5 z-20">
-                    <button onclick="openOcrModal()" class="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
-                        </svg>
-                        <span>Quét chữ (OCR)</span>
-                    </button>
-                    <button onclick="deleteCurrentPage()" class="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 transition" title="Xóa trang này">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Quick Sub-toolbar shown only while adjusting 4-corner perspective -->
-                <div id="cropSubToolbar" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/95 border border-zinc-700 shadow-2xl z-30">
-                    <button onclick="autoDetectCurrentPageQuad(true)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-1">
-                        <span>✨ Tự bắt 4 góc</span>
-                    </button>
-                    <button onclick="expandQuadToFullImage()" class="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium">
-                        Chọn toàn bộ
-                    </button>
-                    <button onclick="toggleCropMode(false)" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow">
-                        Làm phẳng ✓
-                    </button>
-                </div>
-            </div>
-
-            <!-- Editor Controls & Filter Toolbar -->
-            <div class="bg-zinc-900 border-t border-zinc-800 px-3 py-2.5 flex flex-col gap-2.5 shrink-0">
-                <!-- Filter Presets Row -->
-                <div class="grid grid-cols-4 gap-1.5">
-                    <button onclick="setFilterMode('bw')" id="filterBtn_bw" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
-                        Tài liệu B&W
-                    </button>
-                    <button onclick="setFilterMode('magic')" id="filterBtn_magic" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
-                        Magic Color
-                    </button>
-                    <button onclick="setFilterMode('gray')" id="filterBtn_gray" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
-                        Thang xám
-                    </button>
-                    <button onclick="setFilterMode('original')" id="filterBtn_original" class="filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-200 transition text-center">
-                        Bản gốc
-                    </button>
-                </div>
-
-                <!-- Sliders & Action Buttons Row -->
-                <div class="flex items-center justify-between gap-2 pt-0.5">
-                    <div class="flex-1 flex items-center gap-3 bg-zinc-950/70 px-3 py-1.5 rounded-lg border border-zinc-800">
-                        <div class="flex-1 flex items-center gap-2">
-                            <span class="text-[11px] text-zinc-400 shrink-0">Sáng</span>
-                            <input id="sliderBrightness" type="range" min="-60" max="60" value="10" oninput="onAdjustmentChange()" class="w-full accent-emerald-500 h-1 bg-zinc-700 rounded-lg cursor-pointer">
-                        </div>
-                        <div class="flex-1 flex items-center gap-2">
-                            <span class="text-[11px] text-zinc-400 shrink-0">Nét</span>
-                            <input id="sliderContrast" type="range" min="-40" max="80" value="25" oninput="onAdjustmentChange()" class="w-full accent-emerald-500 h-1 bg-zinc-700 rounded-lg cursor-pointer">
-                        </div>
-                    </div>
-
-                    <!-- Rotate & 4-Point Perspective Crop Tools -->
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <button onclick="rotateCurrentPage()" class="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs flex items-center gap-1" title="Xoay 90 độ">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/>
-                            </svg>
-                        </button>
-                        <button id="btnToggleCrop" onclick="toggleCropMode()" class="px-2.5 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-medium flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-                            </svg>
-                            <span id="cropBtnLabel">Bắt 4 góc</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- BOTTOM MULTI-PAGE FILMSTRIP QUEUE -->
-    <footer class="h-20 bg-zinc-950 border-t border-zinc-800/80 px-3 flex items-center gap-2.5 overflow-x-auto shrink-0 z-20">
-        <!-- Add Page Quick Button -->
-        <button onclick="switchAppMode('camera')" class="h-14 w-14 rounded-xl border border-dashed border-zinc-700 hover:border-emerald-500 text-zinc-400 hover:text-emerald-400 flex flex-col items-center justify-center shrink-0 transition">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            <span class="text-[10px] mt-0.5 font-medium">Thêm trang</span>
-        </button>
-
-        <!-- Dynamic Thumbnail Strip -->
-        <div id="pageFilmstrip" class="flex items-center gap-2 overflow-x-auto py-1">
-            <span class="text-xs text-zinc-500 pl-1">Chưa có trang nào được quét. Hãy chụp hoặc chọn ảnh tài liệu.</span>
         </div>
-    </footer>
 
-    <!-- MODAL 1: OCR VIETNAMESE + ENGLISH TEXT EXTRACTION -->
-    <div id="ocrModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85dvh]">
-            <div class="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                    <h3 class="text-sm font-semibold text-zinc-100">Nhận diện văn bản OCR (Tiếng Việt & Anh)</h3>
-                </div>
-                <button onclick="closeOcrModal()" class="p-1 rounded-lg text-zinc-400 hover:text-white">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        <!-- Category / Folder Filter Pills -->
+        <div class="px-4 py-2 flex items-center gap-2 overflow-x-auto shrink-0 border-b border-white/5 bg-cs-bg">
+            <button onclick="setFolderFilter('Tất cả')" data-folder="Tất cả" class="folder-pill px-3 py-1 rounded-full text-xs font-semibold bg-cs-teal text-white shrink-0 transition">Tất cả</button>
+            <button onclick="setFolderFilter('Tài liệu')" data-folder="Tài liệu" class="folder-pill px-3 py-1 rounded-full text-xs font-medium bg-cs-card text-slate-300 hover:text-white shrink-0 transition">Tài liệu</button>
+            <button onclick="setFolderFilter('Học tập / Đề thi')" data-folder="Học tập / Đề thi" class="folder-pill px-3 py-1 rounded-full text-xs font-medium bg-cs-card text-slate-300 hover:text-white shrink-0 transition">Học tập / Đề thi</button>
+            <button onclick="setFolderFilter('CCCD / Thẻ')" data-folder="CCCD / Thẻ" class="folder-pill px-3 py-1 rounded-full text-xs font-medium bg-cs-card text-slate-300 hover:text-white shrink-0 transition">CCCD / Thẻ</button>
+            <button onclick="setFolderFilter('Hóa đơn')" data-folder="Hóa đơn" class="folder-pill px-3 py-1 rounded-full text-xs font-medium bg-cs-card text-slate-300 hover:text-white shrink-0 transition">Hóa đơn</button>
+        </div>
+
+        <!-- Saved Documents Scrollable Container -->
+        <div id="homeDocListContainer" class="flex-1 overflow-y-auto p-3 pb-24 space-y-2.5">
+            <!-- Populated dynamically by JS -->
+        </div>
+
+        <!-- Floating CamScanner Bottom Camera FAB -->
+        <div class="absolute bottom-5 right-5 flex items-center gap-2.5 z-30">
+            <button onclick="openCameraWithMode('single')" class="h-14 px-5 rounded-full bg-gradient-to-r from-cs-teal to-cs-tealDark hover:brightness-110 text-white font-bold text-sm shadow-xl shadow-cs-teal/30 flex items-center gap-2 active:scale-95 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    <circle cx="12" cy="13" r="3"/>
+                </svg>
+                <span>Chụp Quét</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- VIEW 2: CAMSCANNER SMART CAMERA (SINGLE/BATCH/ID)     -->
+    <!-- ===================================================== -->
+    <section id="viewCamera" class="hidden flex-1 flex flex-col h-full bg-black z-20">
+        <!-- Camera Top Utility Bar -->
+        <div class="h-13 px-4 py-2.5 bg-black/80 backdrop-blur-md flex items-center justify-between border-b border-white/10 shrink-0 z-20">
+            <button onclick="closeCameraToPreviousView()" class="p-1.5 rounded-lg text-slate-200 hover:bg-white/10 flex items-center gap-1 text-xs font-medium">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span>Đóng</span>
+            </button>
+
+            <div class="flex items-center gap-2">
+                <button onclick="toggleLiveAutoEdge()" id="btnCamAutoEdge" class="px-2.5 py-1 rounded-full bg-cs-teal/20 border border-cs-teal text-cs-teal text-[11px] font-semibold flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-cs-teal animate-pulse"></span>
+                    <span>Tự bắt góc</span>
+                </button>
+                <button onclick="toggleCameraGrid()" id="btnCamGrid" class="p-1.5 rounded-lg bg-white/10 text-cs-teal" title="Lưới căn chỉnh">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16M8 4v16m8-16v16"/>
                     </svg>
                 </button>
+                <button onclick="flipCameraLens()" class="p-1.5 rounded-lg bg-white/10 text-white" title="Đổi camera">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Camera Viewfinder Stage -->
+        <div class="relative flex-1 overflow-hidden flex items-center justify-center bg-zinc-950">
+            <video id="cameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+
+            <!-- Simulated Interactive Camera Desk (Shown if no hardware webcam/permission) -->
+            <canvas id="simulatedCameraCanvas" class="hidden w-full h-full object-contain"></canvas>
+
+            <!-- Live Cyan/Teal Polygon Overlay -->
+            <canvas id="liveEdgeOverlayCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+
+            <!-- Rule of thirds grid -->
+            <div id="cameraGridBox" class="absolute inset-0 pointer-events-none camera-grid"></div>
+
+            <!-- ID Card 2-Sided Guide Overlay -->
+            <div id="idCardGuideOverlay" class="hidden absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6 z-20">
+                <div class="w-full max-w-[310px] aspect-[1.586/1] rounded-2xl border-2 border-dashed border-amber-400 bg-amber-500/5 shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] flex flex-col items-center justify-between p-3">
+                    <span id="idCardStepBadge" class="px-3 py-1 rounded-full bg-amber-500 text-black font-bold text-xs shadow">
+                        BƯỚC 1/2: CHỤP MẶT TRƯỚC CCCD / THẺ
+                    </span>
+                    <span class="text-[11px] text-amber-200 bg-black/70 px-2.5 py-1 rounded-lg">
+                        Đặt thẻ nằm gọn trong khung tỷ lệ chuẩn 85.6 × 54mm
+                    </span>
+                </div>
+            </div>
+
+            <!-- Live Hint Pill -->
+            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                <span id="cameraModeHintPill" class="px-3 py-1 rounded-full bg-black/75 border border-cs-teal/50 text-[11px] text-cs-teal font-medium backdrop-blur-md whitespace-nowrap">
+                    Đang tự động dò 4 góc trang giấy...
+                </span>
+            </div>
+        </div>
+
+        <!-- CamScanner Mode Carousel Selector -->
+        <div class="bg-zinc-950 pt-2 pb-1 px-3 border-t border-white/10 shrink-0">
+            <div class="flex items-center justify-center gap-4 text-xs font-semibold">
+                <button onclick="setCameraCaptureMode('single')" id="camTab_single" class="cam-mode-tab text-cs-teal border-b-2 border-cs-teal pb-1 transition">
+                    Tài liệu đơn
+                </button>
+                <button onclick="setCameraCaptureMode('batch')" id="camTab_batch" class="cam-mode-tab text-slate-400 hover:text-white pb-1 transition">
+                    Chụp hàng loạt (Batch)
+                </button>
+                <button onclick="setCameraCaptureMode('idcard')" id="camTab_idcard" class="cam-mode-tab text-slate-400 hover:text-white pb-1 transition">
+                    Thẻ CCCD (2 mặt)
+                </button>
+            </div>
+        </div>
+
+        <!-- Shutter Controls Bar -->
+        <div class="h-24 bg-zinc-950 px-6 flex items-center justify-between shrink-0">
+            <!-- Left: Upload or Simulated Scene Switch -->
+            <div class="flex items-center gap-2">
+                <button onclick="triggerGalleryUpload()" class="flex flex-col items-center gap-1 text-slate-300 hover:text-white">
+                    <div class="w-11 h-11 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <span class="text-[10px]">Thư viện</span>
+                </button>
+            </div>
+
+            <!-- Center: CamScanner Teal Shutter Button -->
+            <button onclick="handleShutterSnap()" class="w-16 h-16 rounded-full p-1 border-4 border-cs-teal flex items-center justify-center active:scale-90 transition shadow-lg shadow-cs-teal/30">
+                <div class="w-full h-full rounded-full bg-white hover:bg-cs-teal/20 transition flex items-center justify-center">
+                    <div class="w-6 h-6 rounded-full bg-cs-teal"></div>
+                </div>
+            </button>
+
+            <!-- Right: Batch Queue Counter / Finish Batch Button -->
+            <div class="w-20 flex justify-end">
+                <button id="btnFinishBatch" onclick="finishBatchCapture()" class="hidden px-3 py-2 rounded-xl bg-cs-teal text-white font-bold text-xs items-center gap-1 shadow-lg">
+                    <span id="batchCountLabel" class="font-mono-num">0</span>
+                    <span>Xong →</span>
+                </button>
+                <button id="btnSimDemoInCam" onclick="generateSkewedDemoAndEnterCrop()" class="flex flex-col items-center gap-1 text-cs-teal">
+                    <div class="w-11 h-11 rounded-xl bg-cs-teal/15 border border-cs-teal/40 flex items-center justify-center">
+                        <span class="text-xs font-bold">MẪU</span>
+                    </div>
+                    <span class="text-[10px] font-medium">Đề nghiêng</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- VIEW 3: CAMSCANNER 8-POINT CROP & PERSPECTIVE LOUPE   -->
+    <!-- ===================================================== -->
+    <section id="viewCrop" class="hidden flex-1 flex flex-col h-full bg-cs-bg z-20">
+        <!-- Top Header -->
+        <header class="h-13 px-4 py-2.5 bg-cs-card border-b border-white/10 flex items-center justify-between shrink-0">
+            <button onclick="cancelCropStep()" class="flex items-center gap-1 text-xs font-medium text-slate-300 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span>Chụp lại</span>
+            </button>
+            <div class="text-center">
+                <h2 class="text-xs font-bold text-white uppercase tracking-wider">Căn chỉnh 4 góc & Làm phẳng</h2>
+                <p class="text-[10px] text-cs-teal">Kéo đỉnh tứ giác hoặc cạnh để khớp mép giấy</p>
+            </div>
+            <button onclick="autoDetectCropCorners(true)" class="px-2.5 py-1 rounded-lg bg-cs-teal/15 border border-cs-teal/40 text-cs-teal text-xs font-semibold">
+                Tự bắt góc
+            </button>
+        </header>
+
+        <!-- Interactive 8-Point Polygon Stage -->
+        <div class="relative flex-1 flex items-center justify-center p-4 overflow-hidden bg-zinc-950">
+            <div id="cropCanvasContainer" class="relative inline-block max-w-full max-h-full shadow-2xl">
+                <canvas id="cropSourceCanvas" class="block max-w-full max-h-[68dvh] object-contain rounded"></canvas>
+
+                <!-- Laser scanning animation when auto-detecting -->
+                <div id="cropLaserEffect" class="hidden laser-line"></div>
+
+                <!-- SVG Polygon + Perspective Grid + 8 Handles -->
+                <div id="cropInteractiveLayer" class="absolute inset-0 select-none touch-none">
+                    <svg class="w-full h-full overflow-visible pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <polygon id="csQuadPolygon" points="10,10 90,10 90,90 10,90" fill="rgba(25, 179, 148, 0.18)" stroke="#19B394" stroke-width="0.9" vector-effect="non-scaling-stroke"/>
+                        <line id="csGridH1" x1="10" y1="36" x2="90" y2="36" stroke="rgba(0, 229, 255, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                        <line id="csGridH2" x1="10" y1="63" x2="90" y2="63" stroke="rgba(0, 229, 255, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                        <line id="csGridV1" x1="36" y1="10" x2="36" y2="90" stroke="rgba(0, 229, 255, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                        <line id="csGridV2" x1="63" y1="10" x2="63" y2="90" stroke="rgba(0, 229, 255, 0.45)" stroke-width="0.5" stroke-dasharray="2,2" vector-effect="non-scaling-stroke"/>
+                    </svg>
+
+                    <!-- 4 Corner Handles (0:TL, 1:TR, 2:BR, 3:BL) -->
+                    <div id="csCorner0" class="cs-corner-handle" data-handle="corner-0"></div>
+                    <div id="csCorner1" class="cs-corner-handle" data-handle="corner-1"></div>
+                    <div id="csCorner2" class="cs-corner-handle" data-handle="corner-2"></div>
+                    <div id="csCorner3" class="cs-corner-handle" data-handle="corner-3"></div>
+
+                    <!-- 4 Mid-Edge Handles (top, right, bottom, left) -->
+                    <div id="csEdge0" class="cs-edge-handle" data-handle="edge-0"></div>
+                    <div id="csEdge1" class="cs-edge-handle vertical" data-handle="edge-1"></div>
+                    <div id="csEdge2" class="cs-edge-handle" data-handle="edge-2"></div>
+                    <div id="csEdge3" class="cs-edge-handle vertical" data-handle="edge-3"></div>
+                </div>
+            </div>
+
+            <!-- CamScanner Circular Magnifying Glass Loupe -->
+            <div id="csLoupeBox" class="hidden absolute top-3 left-3 w-28 h-28 rounded-full border-2 border-cs-cyan shadow-2xl overflow-hidden bg-black z-40 pointer-events-none">
+                <canvas id="csLoupeCanvas" width="112" height="112" class="w-full h-full block"></canvas>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-full h-[1px] bg-cs-cyan/90"></div>
+                    <div class="h-full w-[1px] bg-cs-cyan/90 absolute"></div>
+                    <div class="w-3 h-3 rounded-full border border-white"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CamScanner Crop Bottom Action Bar -->
+        <div class="h-20 bg-cs-card border-t border-white/10 px-4 flex items-center justify-between shrink-0">
+            <button onclick="rotateCropSource(-90)" class="flex flex-col items-center gap-1 text-slate-300 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                </svg>
+                <span class="text-[11px]">Xoay trái</span>
+            </button>
+
+            <button onclick="rotateCropSource(90)" class="flex flex-col items-center gap-1 text-slate-300 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6"/>
+                </svg>
+                <span class="text-[11px]">Xoay phải</span>
+            </button>
+
+            <button onclick="toggleSelectAllCropQuad()" class="flex flex-col items-center gap-1 text-slate-300 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                </svg>
+                <span class="text-[11px]">Toàn bộ</span>
+            </button>
+
+            <!-- CamScanner Signature Teal Next Checkmark Button -->
+            <button onclick="confirmCropAndFlattenToStudio()" class="px-5 py-3 rounded-2xl bg-cs-teal hover:bg-cs-tealDark text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-cs-teal/30 active:scale-95 transition">
+                <span>Tiếp tục (Làm phẳng)</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+            </button>
+        </div>
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- VIEW 4: CAMSCANNER FILTER, SIGNATURE & OCR STUDIO     -->
+    <!-- ===================================================== -->
+    <section id="viewFilterStudio" class="hidden flex-1 flex flex-col h-full bg-cs-bg z-20">
+        <!-- Studio Header -->
+        <header class="h-13 px-3 py-2 bg-cs-card border-b border-white/10 flex items-center justify-between shrink-0">
+            <button onclick="reopenCropFromStudio()" class="px-2.5 py-1.5 rounded-lg bg-cs-elevated text-slate-200 hover:text-white text-xs font-medium flex items-center gap-1">
+                <svg class="w-4 h-4 text-cs-teal" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5"/>
+                </svg>
+                <span>Cắt lại</span>
+            </button>
+
+            <div class="text-center">
+                <span id="studioFilterBadge" class="px-2.5 py-0.5 rounded-full bg-cs-teal/20 border border-cs-teal/40 text-cs-teal text-[11px] font-bold">
+                    ✨ Magic Color (Màu Rực Rỡ)
+                </span>
+            </div>
+
+            <button onclick="saveStudioPageToDocument()" class="px-4 py-1.5 rounded-xl bg-cs-teal hover:bg-cs-tealDark text-white font-bold text-xs flex items-center gap-1 shadow-md">
+                <span>Lưu trang</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+            </button>
+        </header>
+
+        <!-- Flattened & Enhanced Document Preview Canvas -->
+        <div class="relative flex-1 flex items-center justify-center p-3 overflow-hidden bg-zinc-950">
+            <div class="relative inline-block max-w-full max-h-full shadow-2xl">
+                <canvas id="studioCanvas" class="block max-w-full max-h-[54dvh] object-contain rounded bg-white"></canvas>
+                <!-- Interactive Signature / Eraser Layer on top of Studio Canvas -->
+                <canvas id="annotationCanvas" class="hidden absolute inset-0 w-full h-full touch-none cursor-crosshair"></canvas>
+            </div>
+
+            <!-- Floating Annotation Sub-bar when Signing/Erasing -->
+            <div id="annotationToolbar" class="hidden absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-xl bg-cs-card/95 border border-cs-teal shadow-2xl flex items-center gap-2 z-30">
+                <span class="text-[11px] text-slate-300 font-medium">Màu bút:</span>
+                <button onclick="setPenColor('#1d4ed8')" class="w-5 h-5 rounded-full bg-blue-700 border-2 border-white"></button>
+                <button onclick="setPenColor('#dc2626')" class="w-5 h-5 rounded-full bg-red-600 border border-white/50"></button>
+                <button onclick="setPenColor('#111827')" class="w-5 h-5 rounded-full bg-zinc-900 border border-white/50"></button>
+                <button onclick="setPenColor('#ffffff')" class="px-2 py-0.5 rounded bg-white text-black text-[10px] font-bold" title="Bút xóa vết bẩn trên giấy">Tẩy trắng</button>
+                <button onclick="clearAnnotations()" class="text-[11px] text-red-400 underline ml-1">Xóa nét</button>
+                <button onclick="commitAnnotationsToPage()" class="px-2.5 py-0.5 rounded bg-cs-teal text-white text-[11px] font-bold">Áp dụng ✓</button>
+            </div>
+        </div>
+
+        <!-- Fine-Tune Sliders + Quick Studio Utilities -->
+        <div class="bg-cs-card border-t border-white/10 px-3 py-2 flex flex-col gap-2 shrink-0">
+            <!-- Brightness & Contrast Row -->
+            <div class="flex items-center gap-3 bg-cs-bg/80 px-3 py-1.5 rounded-xl border border-white/5">
+                <div class="flex-1 flex items-center gap-2">
+                    <span class="text-[11px] text-slate-400">Sáng</span>
+                    <input id="studioSliderBright" type="range" min="-50" max="60" value="8" oninput="renderStudioFilterPreview()" class="w-full accent-cs-teal h-1 bg-slate-700 rounded-lg cursor-pointer">
+                </div>
+                <div class="flex-1 flex items-center gap-2">
+                    <span class="text-[11px] text-slate-400">Tương phản</span>
+                    <input id="studioSliderContrast" type="range" min="-30" max="80" value="25" oninput="renderStudioFilterPreview()" class="w-full accent-cs-teal h-1 bg-slate-700 rounded-lg cursor-pointer">
+                </div>
+                <button onclick="openOcrModalFromCanvas(document.getElementById('studioCanvas'))" class="px-2.5 py-1 rounded-lg bg-cs-teal/20 border border-cs-teal/40 text-cs-teal text-[11px] font-bold shrink-0">
+                    OCR Chữ
+                </button>
+                <button onclick="toggleAnnotationMode()" id="btnSignToggle" class="px-2.5 py-1 rounded-lg bg-cs-elevated text-slate-200 text-[11px] font-medium shrink-0">
+                    ✍️ Ký / Tẩy
+                </button>
+            </div>
+
+            <!-- CamScanner Signature Filter Preset Strip -->
+            <div class="grid grid-cols-6 gap-1.5">
+                <button onclick="selectStudioFilter('original')" id="csFilter_original" class="cs-filter-btn py-1.5 px-1 rounded-xl border border-white/10 bg-cs-elevated text-[11px] font-medium text-slate-300 text-center transition">
+                    Ảnh gốc
+                </button>
+                <button onclick="selectStudioFilter('magic')" id="csFilter_magic" class="cs-filter-btn py-1.5 px-1 rounded-xl border border-cs-teal bg-cs-teal/20 text-[11px] font-bold text-cs-teal text-center transition">
+                    Magic Color
+                </button>
+                <button onclick="selectStudioFilter('noshadow')" id="csFilter_noshadow" class="cs-filter-btn py-1.5 px-1 rounded-xl border border-white/10 bg-cs-elevated text-[11px] font-medium text-slate-300 text-center transition">
+                    Khử bóng
+                </button>
+                <button onclick="selectStudioFilter('lighten')" id="csFilter_lighten" class="cs-filter-btn py-1.5 px-1 rounded-xl border border-white/10 bg-cs-elevated text-[11px] font-medium text-slate-300 text-center transition">
+                    Làm sáng
+                </button>
+                <button onclick="selectStudioFilter('bw')" id="csFilter_bw" class="cs-filter-btn py-1.5 px-1 rounded-xl border border-white/10 bg-cs-elevated text-[11px] font-medium text-slate-300 text-center transition">
+                    Đen trắng
+                </button>
+                <button onclick="selectStudioFilter('gray')" id="csFilter_gray" class="cs-filter-btn py-1.5 px-1 rounded-xl border border-white/10 bg-cs-elevated text-[11px] font-medium text-slate-300 text-center transition">
+                    Thang xám
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- VIEW 5: DOCUMENT DETAIL (MULTI-PAGE VIEWER & EXPORT)  -->
+    <!-- ===================================================== -->
+    <section id="viewDocDetail" class="hidden flex-1 flex flex-col h-full bg-cs-bg z-20">
+        <!-- Document Detail Top Bar -->
+        <header class="px-3 py-2.5 bg-cs-card border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+            <button onclick="navigateToView('viewHome')" class="p-1.5 rounded-xl hover:bg-white/5 text-slate-200 flex items-center gap-1 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+
+            <div class="flex-1 min-w-0">
+                <input id="docTitleEditable" type="text" onchange="renameCurrentDocument(this.value)" class="w-full bg-transparent text-sm font-bold text-white focus:outline-none focus:border-b focus:border-cs-teal truncate" value="Tài liệu CamScanner">
+                <div class="flex items-center gap-2 text-[11px] text-slate-400">
+                    <span id="docDetailPageCount" class="font-mono-num">1 trang</span>
+                    <span>•</span>
+                    <select id="docFolderSelect" onchange="changeCurrentDocFolder(this.value)" class="bg-transparent text-cs-teal font-medium focus:outline-none cursor-pointer">
+                        <option value="Tài liệu" class="bg-cs-card">Thư mục: Tài liệu</option>
+                        <option value="Học tập / Đề thi" class="bg-cs-card">Thư mục: Học tập / Đề thi</option>
+                        <option value="CCCD / Thẻ" class="bg-cs-card">Thư mục: CCCD / Thẻ</option>
+                        <option value="Hóa đơn" class="bg-cs-card">Thư mục: Hóa đơn</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="openExportCenterModal()" class="px-3 py-2 rounded-xl bg-cs-teal hover:bg-cs-tealDark text-white font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-md">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                <span>Xuất PDF</span>
+            </button>
+        </header>
+
+        <!-- Pages Grid inside Document -->
+        <div id="docPagesGrid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 pb-24">
+            <!-- Populated dynamically -->
+        </div>
+
+        <!-- Bottom Action Bar inside Document Detail -->
+        <footer class="h-16 bg-cs-card border-t border-white/10 px-4 flex items-center justify-around shrink-0 z-20">
+            <button onclick="openCameraForExistingDoc()" class="flex flex-col items-center gap-0.5 text-cs-teal font-semibold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                <span class="text-[11px]">Thêm trang</span>
+            </button>
+
+            <button onclick="runOcrOnEntireDocument()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+                </svg>
+                <span class="text-[11px]">OCR Toàn bộ</span>
+            </button>
+
+            <button onclick="openExportCenterModal()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+                <span class="text-[11px]">Chia sẻ PDF</span>
+            </button>
+
+            <button onclick="deleteCurrentDocument()" class="flex flex-col items-center gap-0.5 text-red-400 hover:text-red-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+                <span class="text-[11px]">Xóa hồ sơ</span>
+            </button>
+        </footer>
+    </section>
+
+    <!-- ===================================================== -->
+    <!-- MODAL: OCR VIETNAMESE + ENGLISH TEXT RECOGNITION      -->
+    <!-- ===================================================== -->
+    <div id="ocrModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-cs-card border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85dvh]">
+            <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cs-teal"></span>
+                    <h3 class="text-sm font-bold text-white">Nhận diện chữ OCR (Tiếng Việt & Anh)</h3>
+                </div>
+                <button onclick="closeOcrModal()" class="p-1 text-slate-400 hover:text-white">✕</button>
             </div>
 
             <div class="p-4 flex-1 flex flex-col gap-3 overflow-y-auto">
-                <!-- Progress Bar -->
-                <div id="ocrProgressBox" class="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+                <div class="bg-cs-bg border border-white/10 rounded-xl p-3">
                     <div class="flex justify-between text-xs mb-1.5">
-                        <span id="ocrStatusText" class="text-zinc-300 font-medium">Đang khởi tạo bộ nhận diện tiếng Việt...</span>
-                        <span id="ocrPercentText" class="text-emerald-400 font-semibold">0%</span>
+                        <span id="ocrStatusLabel" class="text-slate-300 font-medium">Đang chuẩn bị đọc văn bản...</span>
+                        <span id="ocrPctLabel" class="text-cs-teal font-bold font-mono-num">0%</span>
                     </div>
-                    <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
-                        <div id="ocrProgressBar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 0%"></div>
+                    <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="ocrProgressFill" class="h-full bg-cs-teal transition-all duration-200" style="width: 0%"></div>
                     </div>
                 </div>
 
-                <!-- Editable Result Textarea -->
-                <textarea id="ocrResultText" rows="10" placeholder="Văn bản trích xuất từ tài liệu sẽ hiển thị tại đây..." class="w-full flex-1 bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs sm:text-sm text-zinc-100 leading-relaxed focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+                <textarea id="ocrTextarea" rows="10" placeholder="Văn bản tiếng Việt trích xuất từ trang tài liệu sẽ hiển thị tại đây..." class="w-full flex-1 bg-cs-bg border border-white/10 rounded-xl p-3 text-xs sm:text-sm text-white leading-relaxed focus:outline-none focus:border-cs-teal resize-none"></textarea>
             </div>
 
-            <div class="px-4 py-3 bg-zinc-950/60 border-t border-zinc-800 flex items-center justify-between gap-2">
-                <button onclick="runOcrOnCurrentPage()" class="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition">
-                    Quét lại trang này
+            <div class="px-4 py-3 bg-cs-bg/60 border-t border-white/10 flex items-center justify-between">
+                <button onclick="downloadOcrAsTxt()" class="px-3 py-2 rounded-xl bg-cs-elevated text-xs font-medium text-slate-200 hover:text-white">
+                    Tải file .TXT
                 </button>
-                <div class="flex items-center gap-2">
-                    <button onclick="copyOcrText()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                        </svg>
-                        <span>Sao chép văn bản</span>
-                    </button>
-                </div>
+                <button onclick="copyOcrToClipboard()" class="px-4 py-2 rounded-xl bg-cs-teal hover:bg-cs-tealDark text-xs font-bold text-white shadow-md">
+                    Sao chép văn bản
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: EXPORT MULTI-PAGE PDF & IMAGE -->
+    <!-- ===================================================== -->
+    <!-- MODAL: EXPORT CENTER (PDF NO WATERMARK & JPG)         -->
+    <!-- ===================================================== -->
     <div id="exportModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div class="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-zinc-100">Xuất Tài Liệu (Không đóng dấu watermark)</h3>
-                <button onclick="closeExportModal()" class="p-1 rounded-lg text-zinc-400 hover:text-white">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
+        <div class="w-full max-w-md bg-cs-card border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-white">Xuất & Chia Sẻ Tài Liệu</h3>
+                    <p class="text-[11px] text-cs-teal">Không dính logo CamScanner • Độ nét gốc</p>
+                </div>
+                <button onclick="closeExportCenterModal()" class="p-1 text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <div class="p-4 flex flex-col gap-4">
+            <div class="p-4 space-y-3">
                 <div>
-                    <label class="block text-xs text-zinc-400 mb-1.5">Tên file tài liệu</label>
-                    <input id="exportFilenameInput" type="text" value="Tai-lieu-scan" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500">
+                    <label class="block text-xs text-slate-400 mb-1">Tên file xuất ra</label>
+                    <input id="exportNameInput" type="text" value="CamScanner-VN" class="w-full px-3 py-2 rounded-xl bg-cs-bg border border-white/10 text-sm text-white focus:outline-none focus:border-cs-teal">
                 </div>
 
-                <div class="grid grid-cols-1 gap-2.5">
-                    <button onclick="exportAllPagesToPDF()" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm flex items-center justify-between shadow-lg transition">
-                        <span class="flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                            </svg>
-                            <span>Tải xuống PDF nhiều trang (Chuẩn A4)</span>
-                        </span>
-                        <span id="pdfModalPageCount" class="px-2 py-0.5 rounded bg-emerald-700 text-[11px]">1 trang</span>
-                    </button>
-
-                    <button onclick="downloadCurrentPageImage()" class="w-full py-3 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 font-medium text-xs sm:text-sm flex items-center justify-between transition">
-                        <span class="flex items-center gap-2">
-                            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                            </svg>
-                            <span>Tải trang hiện tại thành ảnh JPG sắc nét</span>
-                        </span>
-                        <span class="text-[11px] text-zinc-400"> Độ phân giải cao</span>
-                    </button>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Khổ trang PDF</label>
+                    <select id="exportPageSizeSelect" class="w-full px-3 py-2 rounded-xl bg-cs-bg border border-white/10 text-xs text-white focus:outline-none">
+                        <option value="a4">Chuẩn in ấn A4 (210 × 297 mm)</option>
+                        <option value="fit">Khớp đúng kích thước ảnh cắt (Auto Fit)</option>
+                    </select>
                 </div>
+
+                <button onclick="exportCurrentDocToPDF()" class="w-full py-3 px-4 rounded-xl bg-cs-teal hover:bg-cs-tealDark text-white font-bold text-xs sm:text-sm flex items-center justify-between shadow-lg transition">
+                    <span>📄 Tải xuống PDF nhiều trang (Không Watermark)</span>
+                    <span id="exportModalBadge" class="px-2 py-0.5 rounded bg-black/30 text-[11px] font-mono-num">1 trang</span>
+                </button>
+
+                <button onclick="exportCurrentDocImagesZip()" class="w-full py-3 px-4 rounded-xl bg-cs-elevated hover:bg-white/10 text-slate-100 font-semibold text-xs sm:text-sm flex items-center justify-between border border-white/10 transition">
+                    <span>🖼️ Tải xuống bộ ảnh JPG chất lượng cao</span>
+                    <span class="text-[11px] text-cs-teal">HD 100%</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- TOAST MESSAGE BOX (NO NATIVE ALERT) -->
-    <div id="toastBanner" class="pointer-events-none fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-zinc-900/95 border border-emerald-500/40 text-xs font-medium text-zinc-100 shadow-2xl opacity-0 transition-opacity duration-300 z-50 flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-        <span id="toastMessageText">Đã lưu</span>
+    <!-- TOAST NOTIFICATION -->
+    <div id="csToast" class="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-cs-card/95 border border-cs-teal text-xs font-medium text-white shadow-2xl opacity-0 transition-opacity duration-300 z-50 flex items-center gap-2 whitespace-nowrap">
+        <span class="w-2 h-2 rounded-full bg-cs-teal"></span>
+        <span id="csToastText">Đã lưu</span>
     </div>
 
     <script>
-        // ==========================================
-        // STATE MANAGEMENT
-        // ==========================================
-        const state = {
-            // Each page: {
-            //   id, sourceCanvas, warpedCanvas, processedDataUrl,
-            //   quad: [{x,y}, {x,y}, {x,y}, {x,y}] (Normalized 0..1 TL, TR, BR, BL),
-            //   filter: 'bw'|'magic'|'gray'|'original',
-            //   brightness: 10, contrast: 25, rotation: 0
-            // }
-            pages: [],
-            currentIndex: -1,
-            mode: 'camera',
+        // =====================================================
+        // APPLICATION STATE & PERSISTENT STORAGE
+        // =====================================================
+        constSTORAGE_KEY = 'CAMSCANNER_VN_DOCS_V2';
+
+        const appState = {
+            documents: [],           // [{ id, title, folder, createdAt, ocrCache, pages: [{ id, dataUrl, filter }] }]
+            activeDocId: null,
+            activeFolder: 'Tất cả',
+            homeGridView: false,
+
+            // Camera state
+            captureMode: 'single',   // 'single' | 'batch' | 'idcard'
             facingMode: 'environment',
             stream: null,
-            gridVisible: true,
-            liveEdgeEnabled: true,
-            liveEdgeRaf: null,
-            lastDetectedLiveQuad: null,
-            cropActive: false,
-            draggingCornerIndex: null
+            usingSimulatedCamera: false,
+            liveAutoEdge: true,
+            cameraGrid: true,
+            liveRaf: null,
+            lastLiveQuad: null,
+            batchTempPages: [],      // Holds pages snapped in Batch mode
+            idCardSides: [],         // Holds Front & Back canvases in ID Card mode
+
+            // Crop & Perspective Studio pipeline state
+            editingExistingPageIndex: null, // null if adding new page, or index if re-editing
+            rawCropCanvas: null,
+            cropQuad: [
+                { x: 0.1, y: 0.1 },
+                { x: 0.9, y: 0.1 },
+                { x: 0.9, y: 0.9 },
+                { x: 0.1, y: 0.9 }
+            ],
+            flattenedCanvas: null,
+            studioFilter: 'magic',
+            penActive: false,
+            penColor: '#1d4ed8',
+            isDrawingSignature: false
         };
 
-        const videoEl = document.getElementById('cameraVideo');
-        const liveEdgeCanvas = document.getElementById('liveEdgeCanvas');
-        const liveEdgeCtx = liveEdgeCanvas.getContext('2d');
-        const editorCanvas = document.getElementById('editorCanvas');
-        const ctx = editorCanvas.getContext('2d', { willReadFrequently: true });
-        const loupeCanvas = document.getElementById('loupeCanvas');
-        const loupeCtx = loupeCanvas.getContext('2d');
-
-        // ==========================================
-        // TOAST HELPER
-        // ==========================================
-        let toastTimer = null;
-        function showToast(message) {
-            const banner = document.getElementById('toastBanner');
-            document.getElementById('toastMessageText').textContent = message;
-            banner.classList.remove('opacity-0');
-            banner.classList.add('opacity-100');
-            if (toastTimer) clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                banner.classList.remove('opacity-100');
-                banner.classList.add('opacity-0');
+        // Toast Helper
+        let toastTimeout = null;
+        function showToast(msg) {
+            const el = document.getElementById('csToast');
+            document.getElementById('csToastText').textContent = msg;
+            el.classList.remove('opacity-0');
+            el.classList.add('opacity-100');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                el.classList.remove('opacity-100');
+                el.classList.add('opacity-0');
             }, 2600);
         }
 
-        // ==========================================
-        // COMPUTER VISION: AUTO 4-CORNER PAPER EDGE DETECTION
-        // ==========================================
-        /**
-         * Detects the 4 corners (TL, TR, BR, BL in normalized 0..1 coordinates)
-         * of a bright/contrasting rectangular document sheet against a background.
-         * Uses downsampled luminance + Otsu/percentile adaptive thresholding +
-         * Sobel gradient magnitude + extreme corner projection scoring.
-         */
+        // View Navigation
+        function navigateToView(viewId) {
+            ['viewHome', 'viewCamera', 'viewCrop', 'viewFilterStudio', 'viewDocDetail'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', id !== viewId);
+            });
+            if (viewId !== 'viewCamera') {
+                stopCameraHardware();
+            }
+            if (viewId === 'viewHome') {
+                renderHomeDocumentList();
+            }
+            if (viewId === 'viewDocDetail') {
+                renderDocDetailView();
+            }
+        }
+
+        // Save & Load Documents from LocalStorage
+        function saveDocumentsToStorage() {
+            try {
+                localStorage.setItem(constSTORAGE_KEY, JSON.stringify(appState.documents));
+            } catch (e) {
+                // Storage quota fallback: keep latest 12 docs
+                if (appState.documents.length > 1) {
+                    appState.documents.pop();
+                    try { localStorage.setItem(constSTORAGE_KEY, JSON.stringify(appState.documents)); } catch (_) {}
+                }
+            }
+        }
+
+        function loadDocumentsFromStorage() {
+            try {
+                const raw = localStorage.getItem(constSTORAGE_KEY);
+                if (raw) {
+                    appState.documents = JSON.parse(raw);
+                }
+            } catch (e) {
+                appState.documents = [];
+            }
+            if (!appState.documents || appState.documents.length === 0) {
+                seedInitialSampleDocument();
+            }
+        }
+
+        // Creates a default pre-scanned Vietnamese Document so Home Library looks like real CamScanner immediately
+        function seedInitialSampleDocument() {
+            const sampleCanvas = createFlatVietnameseContractCanvas();
+            const dataUrl = sampleCanvas.toDataURL('image/jpeg', 0.85);
+            appState.documents = [
+                {
+                    id: 'doc_welcome_1',
+                    title: 'Biên bản nghiệm thu thiết bị 2026',
+                    folder: 'Tài liệu',
+                    createdAt: 'Hôm nay, 08:30',
+                    ocrCache: 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM HỢP ĐỒNG BÀN GIAO THIẾT BỊ',
+                    pages: [
+                        { id: 'p_1', dataUrl: dataUrl, filter: 'magic' }
+                    ]
+                }
+            ];
+            saveDocumentsToStorage();
+        }
+
+        // =====================================================
+        // HOME LIBRARY RENDERING & SEARCH/FOLDER FILTERS
+        // =====================================================
+        function setFolderFilter(folderName) {
+            appState.activeFolder = folderName;
+            document.querySelectorAll('.folder-pill').forEach(btn => {
+                const isMatch = btn.dataset.folder === folderName;
+                btn.className = isMatch
+                    ? 'folder-pill px-3 py-1 rounded-full text-xs font-semibold bg-cs-teal text-white shrink-0 transition'
+                    : 'folder-pill px-3 py-1 rounded-full text-xs font-medium bg-cs-card text-slate-300 hover:text-white shrink-0 transition';
+            });
+            renderHomeDocumentList();
+        }
+
+        function toggleHomeLayout() {
+            appState.homeGridView = !appState.homeGridView;
+            renderHomeDocumentList();
+        }
+
+        function renderHomeDocumentList() {
+            const container = document.getElementById('homeDocListContainer');
+            const query = (document.getElementById('searchDocInput').value || '').trim().toLowerCase();
+
+            const filtered = appState.documents.filter(doc => {
+                const matchFolder = appState.activeFolder === 'Tất cả' || doc.folder === appState.activeFolder;
+                const matchQuery = !query ||
+                    doc.title.toLowerCase().includes(query) ||
+                    (doc.ocrCache && doc.ocrCache.toLowerCase().includes(query)) ||
+                    (doc.folder && doc.folder.toLowerCase().includes(query));
+                return matchFolder && matchQuery;
+            });
+
+            if (filtered.length === 0) {
+                container.className = 'flex-1 overflow-y-auto p-6 text-center flex flex-col items-center justify-center pb-24';
+                container.innerHTML = `
+                    <div class="w-16 h-16 rounded-2xl bg-cs-card border border-white/10 flex items-center justify-center text-cs-teal mb-3">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <p class="text-sm font-semibold text-white mb-1">Chưa có tài liệu nào trong mục này</p>
+                    <p class="text-xs text-slate-400 max-w-xs mb-4">Bấm nút "Chụp Quét" hoặc "Thử Mẫu Nghiêng" ở trên để trải nghiệm tự động bắt 4 góc & làm phẳng giấy như CamScanner.</p>
+                    <button onclick="generateSkewedDemoAndEnterCrop()" class="px-4 py-2 rounded-xl bg-cs-teal text-white text-xs font-bold shadow">
+                        ✨ Tạo ngay Đề Mẫu Chụp Nghiêng
+                    </button>
+                `;
+                return;
+            }
+
+            if (appState.homeGridView) {
+                container.className = 'flex-1 overflow-y-auto p-3 pb-24 grid grid-cols-2 gap-3 content-start';
+                container.innerHTML = filtered.map(doc => {
+                    const thumb = doc.pages[0]?.dataUrl || '';
+                    return `
+                        <div onclick="openDocumentDetail('${doc.id}')" class="bg-cs-card hover:bg-cs-elevated border border-white/10 rounded-2xl overflow-hidden cursor-pointer transition flex flex-col shadow">
+                            <div class="h-36 bg-zinc-900 relative overflow-hidden flex items-center justify-center">
+                                <img src="${thumb}" class="w-full h-full object-cover" alt="thumb">
+                                <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/75 text-[10px] font-mono-num text-white font-semibold">
+                                    ${doc.pages.length} trang
+                                </span>
+                            </div>
+                            <div class="p-2.5">
+                                <h3 class="text-xs font-bold text-white truncate">${escapeHtml(doc.title)}</h3>
+                                <div class="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                                    <span class="text-cs-teal">${escapeHtml(doc.folder)}</span>
+                                    <span>${escapeHtml(doc.createdAt)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.className = 'flex-1 overflow-y-auto p-3 pb-24 space-y-2.5';
+                container.innerHTML = filtered.map(doc => {
+                    const thumb = doc.pages[0]?.dataUrl || '';
+                    return `
+                        <div onclick="openDocumentDetail('${doc.id}')" class="bg-cs-card hover:bg-cs-elevated border border-white/10 rounded-2xl p-2.5 flex items-center gap-3 cursor-pointer transition shadow-sm">
+                            <div class="w-14 h-18 rounded-xl bg-zinc-900 overflow-hidden shrink-0 border border-white/10 relative">
+                                <img src="${thumb}" class="w-full h-full object-cover" alt="thumb">
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="px-1.5 py-0.5 rounded bg-cs-teal/15 text-cs-teal text-[10px] font-semibold">${escapeHtml(doc.folder)}</span>
+                                    <h3 class="text-sm font-bold text-white truncate">${escapeHtml(doc.title)}</h3>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
+                                    <span>${escapeHtml(doc.createdAt)}</span>
+                                    <span>•</span>
+                                    <span class="font-mono-num text-slate-200 font-medium">${doc.pages.length} trang</span>
+                                </p>
+                            </div>
+                            <button onclick="event.stopPropagation(); quickExportDocPDF('${doc.id}')" class="p-2.5 rounded-xl bg-cs-teal/15 hover:bg-cs-teal text-cs-teal hover:text-white transition shrink-0" title="Tải nhanh PDF">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[m]));
+        }
+
+        // =====================================================
+        // COMPUTER VISION ENGINE: AUTO 4-CORNER EDGE DETECTION
+        // =====================================================
         function detectDocumentQuadFromSource(imageOrCanvas) {
             const w = 180;
             const h = 240;
@@ -520,9 +960,7 @@
             const rgba = tCtx.getImageData(0, 0, w, h).data;
             const lum = new Float32Array(w * h);
 
-            // Compute border luminance average to distinguish paper vs background
-            let borderSum = 0;
-            let borderCount = 0;
+            let borderSum = 0, borderCount = 0;
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
                     const idx = (y * w + x) * 4;
@@ -536,7 +974,7 @@
             }
             const borderMean = borderSum / Math.max(1, borderCount);
 
-            // 3x3 Box Blur to suppress wood grain or sensor noise
+            // 3x3 Box blur
             const blurred = new Float32Array(w * h);
             for (let y = 1; y < h - 1; y++) {
                 for (let x = 1; x < w - 1; x++) {
@@ -550,13 +988,7 @@
                 }
             }
 
-            // Compute Sobel Edge Gradients + Paper Foreground Mask
-            const mask = new Uint8Array(w * h);
-            const edgePoints = [];
-
-            // Determine threshold between center region and border
-            let centerSum = 0;
-            let centerCount = 0;
+            let centerSum = 0, centerCount = 0;
             for (let y = Math.floor(h * 0.25); y < Math.floor(h * 0.75); y++) {
                 for (let x = Math.floor(w * 0.25); x < Math.floor(w * 0.75); x++) {
                     centerSum += blurred[y * w + x];
@@ -567,6 +999,9 @@
             const diffFromBorder = Math.abs(centerMean - borderMean);
             const lumThreshold = (centerMean + borderMean) * 0.5;
             const paperIsBrighter = centerMean >= borderMean;
+
+            const mask = new Uint8Array(w * h);
+            const edgePoints = [];
 
             for (let y = 4; y < h - 4; y++) {
                 for (let x = 4; x < w - 4; x++) {
@@ -580,75 +1015,49 @@
                         blurred[(y + 1) * w + (x - 1)] + 2 * blurred[(y + 1) * w + x] + blurred[(y + 1) * w + (x + 1)];
                     const mag = Math.hypot(gx, gy);
 
-                    const isForeground = diffFromBorder > 18
-                        ? (paperIsBrighter ? blurred[i] > lumThreshold : blurred[i] < lumThreshold)
-                        : false;
-
-                    if (isForeground) {
-                        mask[i] = 1;
+                    if (diffFromBorder > 16) {
+                        if (paperIsBrighter ? blurred[i] > lumThreshold : blurred[i] < lumThreshold) {
+                            mask[i] = 1;
+                        }
                     }
-                    if (mag > 62) {
-                        edgePoints.push({ x, y, mag });
-                    }
+                    if (mag > 60) edgePoints.push({ x, y });
                 }
             }
 
-            // Collect boundary candidates from foreground mask transitions or strong edges
             const candidates = [];
             for (let y = 5; y < h - 5; y++) {
                 for (let x = 5; x < w - 5; x++) {
                     const i = y * w + x;
-                    if (mask[i]) {
-                        // Check if it's on the perimeter of the paper mask
-                        if (!mask[i - 1] || !mask[i + 1] || !mask[i - w] || !mask[i + w]) {
-                            candidates.push({ x, y });
-                        }
+                    if (mask[i] && (!mask[i - 1] || !mask[i + 1] || !mask[i - w] || !mask[i + w])) {
+                        candidates.push({ x, y });
                     }
                 }
             }
 
-            const pool = candidates.length >= 40 ? candidates : edgePoints;
+            const pool = candidates.length >= 35 ? candidates : edgePoints;
+            if (pool.length < 20) return getDefaultQuad();
 
-            if (pool.length < 24) {
-                return getDefaultInsetQuad();
-            }
-
-            // Find the 4 extreme corners using directional projections:
-            // TL minimizes (x + y), BR maximizes (x + y)
-            // TR maximizes (x - y), BL minimizes (x - y)
             let tl = null, tr = null, br = null, bl = null;
-            let minSum = Infinity, maxSum = -Infinity;
-            let maxDiff = -Infinity, minDiff = Infinity;
+            let minSum = Infinity, maxSum = -Infinity, maxDiff = -Infinity, minDiff = Infinity;
 
             for (let i = 0; i < pool.length; i++) {
-                const p = pool[i];
-                // Normalize x and y to equal weight
-                const nx = p.x / w;
-                const ny = p.y / h;
+                const nx = pool[i].x / w;
+                const ny = pool[i].y / h;
                 const sum = nx + ny;
                 const diff = nx - ny;
-
                 if (sum < minSum) { minSum = sum; tl = { x: nx, y: ny }; }
                 if (sum > maxSum) { maxSum = sum; br = { x: nx, y: ny }; }
                 if (diff > maxDiff) { maxDiff = diff; tr = { x: nx, y: ny }; }
                 if (diff < minDiff) { minDiff = diff; bl = { x: nx, y: ny }; }
             }
 
-            if (!tl || !tr || !br || !bl) {
-                return getDefaultInsetQuad();
-            }
-
             const quad = [tl, tr, br, bl];
-            // Validate quad area (must cover at least 15% of frame and be convex-ish)
-            const area = computeQuadNormalizedArea(quad);
-            if (area < 0.14 || area > 0.96) {
-                return getDefaultInsetQuad();
-            }
-
+            const area = computeQuadArea(quad);
+            if (area < 0.12 || area > 0.96) return getDefaultQuad();
             return quad;
         }
 
-        function getDefaultInsetQuad() {
+        function getDefaultQuad() {
             return [
                 { x: 0.08, y: 0.08 },
                 { x: 0.92, y: 0.08 },
@@ -657,8 +1066,7 @@
             ];
         }
 
-        function computeQuadNormalizedArea(q) {
-            // Shoelace formula
+        function computeQuadArea(q) {
             let area = 0;
             for (let i = 0; i < 4; i++) {
                 const j = (i + 1) % 4;
@@ -667,24 +1075,14 @@
             return Math.abs(area) / 2;
         }
 
-        // ==========================================
-        // COMPUTER VISION: 4-POINT HOMOGRAPHY PERSPECTIVE WARP
-        // ==========================================
-        /**
-         * Solves the 3x3 Homography matrix mapping destination rectangle (0..dstW, 0..dstH)
-         * back to source quadrilateral [(x0,y0), (x1,y1), (x2,y2), (x3,y3)]
-         * and performs Bilinear Interpolation for crisp text rendering.
-         */
-        function warpPerspectiveDocument(srcCanvas, quadNorm) {
+        // =====================================================
+        // COMPUTER VISION ENGINE: 8-DOF HOMOGRAPHY WARP
+        // =====================================================
+        function warpPerspectiveHomography(srcCanvas, quadNorm) {
             const sw = srcCanvas.width;
             const sh = srcCanvas.height;
+            const pts = quadNorm.map(p => ({ x: p.x * sw, y: p.y * sh }));
 
-            const pts = quadNorm.map(p => ({
-                x: p.x * sw,
-                y: p.y * sh
-            }));
-
-            // Calculate natural output width and height from quad edge lengths
             const topW = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
             const bottomW = Math.hypot(pts[2].x - pts[3].x, pts[2].y - pts[3].y);
             const leftH = Math.hypot(pts[3].x - pts[0].x, pts[3].y - pts[0].y);
@@ -693,8 +1091,7 @@
             let dstW = Math.round(Math.max(topW, bottomW));
             let dstH = Math.round(Math.max(leftH, rightH));
 
-            // Cap output dimensions for smooth mobile performance while keeping high DPI
-            const maxDim = 1600;
+            const maxDim = 1500;
             if (dstW > maxDim || dstH > maxDim) {
                 const scale = maxDim / Math.max(dstW, dstH);
                 dstW = Math.round(dstW * scale);
@@ -703,14 +1100,13 @@
             dstW = Math.max(120, dstW);
             dstH = Math.max(120, dstH);
 
-            // Solve Homography H that maps (u,v) in [0..dstW, 0..dstH] -> (x,y) in srcCanvas
             const dstPts = [
                 { x: 0, y: 0 },
                 { x: dstW - 1, y: 0 },
                 { x: dstW - 1, y: dstH - 1 },
                 { x: 0, y: dstH - 1 }
             ];
-            const H = solveHomographyMatrix(dstPts, pts);
+            const H = solveHomography8DOF(dstPts, pts);
 
             const outCanvas = document.createElement('canvas');
             outCanvas.width = dstW;
@@ -723,13 +1119,13 @@
 
             const h00 = H[0], h01 = H[1], h02 = H[2];
             const h10 = H[3], h11 = H[4], h12 = H[5];
-            const h20 = H[6], h21 = H[7], h22 = 1;
+            const h20 = H[6], h21 = H[7];
 
             let dstIdx = 0;
             for (let v = 0; v < dstH; v++) {
                 const rowX = h01 * v + h02;
                 const rowY = h11 * v + h12;
-                const rowW = h21 * v + h22;
+                const rowW = h21 * v + 1;
 
                 for (let u = 0; u < dstW; u++) {
                     const wDenom = h20 * u + rowW;
@@ -757,10 +1153,7 @@
                         dstData[dstIdx + 2] = srcData[i00 + 2] * w00 + srcData[i10 + 2] * w10 + srcData[i01 + 2] * w01 + srcData[i11 + 2] * w11;
                         dstData[dstIdx + 3] = 255;
                     } else {
-                        dstData[dstIdx] = 255;
-                        dstData[dstIdx + 1] = 255;
-                        dstData[dstIdx + 2] = 255;
-                        dstData[dstIdx + 3] = 255;
+                        dstData[dstIdx] = dstData[dstIdx + 1] = dstData[dstIdx + 2] = dstData[dstIdx + 3] = 255;
                     }
                     dstIdx += 4;
                 }
@@ -770,10 +1163,8 @@
             return outCanvas;
         }
 
-        // Gaussian elimination for 8x8 linear system to compute Homography coefficients
-        function solveHomographyMatrix(src, dst) {
-            const A = [];
-            const b = [];
+        function solveHomography8DOF(src, dst) {
+            const A = [], b = [];
             for (let i = 0; i < 4; i++) {
                 const sx = src[i].x, sy = src[i].y;
                 const dx = dst[i].x, dy = dst[i].y;
@@ -782,7 +1173,6 @@
                 A.push([0, 0, 0, sx, sy, 1, -sx * dy, -sy * dy]);
                 b.push(dy);
             }
-
             const n = 8;
             for (let i = 0; i < n; i++) {
                 let maxRow = i;
@@ -791,312 +1181,516 @@
                 }
                 [A[i], A[maxRow]] = [A[maxRow], A[i]];
                 [b[i], b[maxRow]] = [b[maxRow], b[i]];
-
                 const pivot = A[i][i] || 1e-12;
                 for (let k = i + 1; k < n; k++) {
                     const factor = A[k][i] / pivot;
                     b[k] -= factor * b[i];
-                    for (let j = i; j < n; j++) {
-                        A[k][j] -= factor * A[i][j];
-                    }
+                    for (let j = i; j < n; j++) A[k][j] -= factor * A[i][j];
                 }
             }
-
             const x = new Array(n).fill(0);
             for (let i = n - 1; i >= 0; i--) {
                 let sum = b[i];
-                for (let j = i + 1; j < n; j++) {
-                    sum -= A[i][j] * x[j];
-                }
+                for (let j = i + 1; j < n; j++) sum -= A[i][j] * x[j];
                 x[i] = sum / (A[i][i] || 1e-12);
             }
             return x;
         }
 
-        // ==========================================
-        // CAMERA & LIVE REAL-TIME QUAD DETECTOR
-        // ==========================================
-        async function startCamera() {
-            stopCameraStream();
-            const fallback = document.getElementById('cameraFallbackPrompt');
+        // =====================================================
+        // SMART CAMERA VIEW & MODES (SINGLE, BATCH, ID CARD)
+        // =====================================================
+        function openCameraWithMode(mode) {
+            appState.activeDocId = null; // Create new doc unless opened from DocDetail
+            appState.editingExistingPageIndex = null;
+            appState.batchTempPages = [];
+            appState.idCardSides = [];
+            navigateToView('viewCamera');
+            setCameraCaptureMode(mode);
+            startCameraHardwareOrSimulation();
+        }
+
+        function openCameraForExistingDoc() {
+            appState.editingExistingPageIndex = null;
+            appState.batchTempPages = [];
+            appState.idCardSides = [];
+            navigateToView('viewCamera');
+            setCameraCaptureMode('single');
+            startCameraHardwareOrSimulation();
+        }
+
+        function closeCameraToPreviousView() {
+            if (appState.activeDocId) {
+                navigateToView('viewDocDetail');
+            } else {
+                navigateToView('viewHome');
+            }
+        }
+
+        function setCameraCaptureMode(mode) {
+            appState.captureMode = mode;
+            ['single', 'batch', 'idcard'].forEach(m => {
+                const tab = document.getElementById('camTab_' + m);
+                if (m === mode) {
+                    tab.className = 'cam-mode-tab text-cs-teal border-b-2 border-cs-teal pb-1 transition';
+                } else {
+                    tab.className = 'cam-mode-tab text-slate-400 hover:text-white pb-1 transition';
+                }
+            });
+
+            const idOverlay = document.getElementById('idCardGuideOverlay');
+            const hint = document.getElementById('cameraModeHintPill');
+            const batchBtn = document.getElementById('btnFinishBatch');
+            const demoBtn = document.getElementById('btnSimDemoInCam');
+
+            if (mode === 'idcard') {
+                appState.idCardSides = [];
+                idOverlay.classList.remove('hidden');
+                document.getElementById('idCardStepBadge').textContent = 'BƯỚC 1/2: CHỤP MẶT TRƯỚC CCCD / THẺ';
+                hint.textContent = 'Chế độ ghép 2 mặt CCCD lên cùng 1 trang A4';
+                batchBtn.classList.add('hidden');
+                demoBtn.classList.remove('hidden');
+            } else if (mode === 'batch') {
+                idOverlay.classList.add('hidden');
+                hint.textContent = 'Chụp liên tiếp nhiều trang — Tự động bắt góc & làm phẳng';
+                updateBatchButtonUI();
+            } else {
+                idOverlay.classList.add('hidden');
+                hint.textContent = 'Đang tự động dò 4 góc trang giấy...';
+                batchBtn.classList.add('hidden');
+                demoBtn.classList.remove('hidden');
+            }
+        }
+
+        function updateBatchButtonUI() {
+            const batchBtn = document.getElementById('btnFinishBatch');
+            const demoBtn = document.getElementById('btnSimDemoInCam');
+            if (appState.captureMode === 'batch' && appState.batchTempPages.length > 0) {
+                batchBtn.classList.remove('hidden');
+                batchBtn.classList.add('flex');
+                demoBtn.classList.add('hidden');
+                document.getElementById('batchCountLabel').textContent = appState.batchTempPages.length;
+            } else {
+                batchBtn.classList.add('hidden');
+                batchBtn.classList.remove('flex');
+                demoBtn.classList.remove('hidden');
+            }
+        }
+
+        async function startCameraHardwareOrSimulation() {
+            stopCameraHardware();
+            const videoEl = document.getElementById('cameraVideo');
+            const simCanvas = document.getElementById('simulatedCameraCanvas');
+
             try {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error('Trình duyệt không hỗ trợ camera trực tiếp');
+                    throw new Error('No camera API');
                 }
-                const constraints = {
+                const stream = await navigator.mediaDevices.getUserMedia({
                     audio: false,
-                    video: {
-                        facingMode: { ideal: state.facingMode },
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }
-                };
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                state.stream = stream;
+                    video: { facingMode: { ideal: appState.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+                });
+                appState.stream = stream;
+                appState.usingSimulatedCamera = false;
                 videoEl.srcObject = stream;
-                fallback.classList.add('hidden');
-                startLiveEdgeLoop();
+                videoEl.classList.remove('hidden');
+                simCanvas.classList.add('hidden');
             } catch (err) {
-                fallback.classList.remove('hidden');
+                // Fallback to interactive simulated camera scene on desktop/restricted iframe
+                appState.usingSimulatedCamera = true;
+                videoEl.classList.add('hidden');
+                simCanvas.classList.remove('hidden');
+                renderSimulatedSkewedDeskScene(simCanvas);
+            }
+            startLiveAutoEdgeLoop();
+        }
+
+        function stopCameraHardware() {
+            if (appState.liveRaf) {
+                cancelAnimationFrame(appState.liveRaf);
+                appState.liveRaf = null;
+            }
+            if (appState.stream) {
+                appState.stream.getTracks().forEach(t => t.stop());
+                appState.stream = null;
             }
         }
 
-        function stopCameraStream() {
-            if (state.liveEdgeRaf) {
-                cancelAnimationFrame(state.liveEdgeRaf);
-                state.liveEdgeRaf = null;
-            }
-            if (state.stream) {
-                state.stream.getTracks().forEach(track => track.stop());
-                state.stream = null;
-            }
-        }
+        function startLiveAutoEdgeLoop() {
+            const videoEl = document.getElementById('cameraVideo');
+            const simCanvas = document.getElementById('simulatedCameraCanvas');
+            const overlay = document.getElementById('liveEdgeOverlayCanvas');
+            const oCtx = overlay.getContext('2d');
+            let lastTs = 0;
 
-        let lastLiveDetectTimestamp = 0;
-        function startLiveEdgeLoop() {
             function loop(ts) {
-                if (state.mode !== 'camera' || !state.stream) return;
+                if (document.getElementById('viewCamera').classList.contains('hidden')) return;
 
-                if (state.liveEdgeEnabled && videoEl.videoWidth > 0 && ts - lastLiveDetectTimestamp > 220) {
-                    lastLiveDetectTimestamp = ts;
-                    const detected = detectDocumentQuadFromSource(videoEl);
-                    // Smooth interpolation with previous quad to avoid jitter
-                    if (!state.lastDetectedLiveQuad) {
-                        state.lastDetectedLiveQuad = detected;
-                    } else {
-                        for (let i = 0; i < 4; i++) {
-                            state.lastDetectedLiveQuad[i].x = state.lastDetectedLiveQuad[i].x * 0.6 + detected[i].x * 0.4;
-                            state.lastDetectedLiveQuad[i].y = state.lastDetectedLiveQuad[i].y * 0.6 + detected[i].y * 0.4;
+                if (appState.liveAutoEdge && ts - lastTs > 200) {
+                    lastTs = ts;
+                    const src = appState.usingSimulatedCamera ? simCanvas : (videoEl.videoWidth > 0 ? videoEl : null);
+                    if (src) {
+                        const detected = detectDocumentQuadFromSource(src);
+                        if (!appState.lastLiveQuad) {
+                            appState.lastLiveQuad = detected;
+                        } else {
+                            for (let i = 0; i < 4; i++) {
+                                appState.lastLiveQuad[i].x = appState.lastLiveQuad[i].x * 0.6 + detected[i].x * 0.4;
+                                appState.lastLiveQuad[i].y = appState.lastLiveQuad[i].y * 0.6 + detected[i].y * 0.4;
+                            }
                         }
+                        drawLiveCamQuad(overlay, oCtx, appState.lastLiveQuad);
                     }
-                    drawLiveEdgeOverlay(state.lastDetectedLiveQuad);
-                } else if (!state.liveEdgeEnabled) {
-                    liveEdgeCtx.clearRect(0, 0, liveEdgeCanvas.width, liveEdgeCanvas.height);
+                } else if (!appState.liveAutoEdge) {
+                    oCtx.clearRect(0, 0, overlay.width, overlay.height);
                 }
-
-                state.liveEdgeRaf = requestAnimationFrame(loop);
+                appState.liveRaf = requestAnimationFrame(loop);
             }
-            state.liveEdgeRaf = requestAnimationFrame(loop);
+            appState.liveRaf = requestAnimationFrame(loop);
         }
 
-        function drawLiveEdgeOverlay(quad) {
-            const rect = liveEdgeCanvas.getBoundingClientRect();
-            if (liveEdgeCanvas.width !== rect.width || liveEdgeCanvas.height !== rect.height) {
-                liveEdgeCanvas.width = rect.width;
-                liveEdgeCanvas.height = rect.height;
+        function drawLiveCamQuad(canvas, ctx, quad) {
+            const rect = canvas.getBoundingClientRect();
+            if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                canvas.width = rect.width;
+                canvas.height = rect.height;
             }
-            const w = liveEdgeCanvas.width;
-            const h = liveEdgeCanvas.height;
-            liveEdgeCtx.clearRect(0, 0, w, h);
-            if (!quad) return;
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            if (!quad || appState.captureMode === 'idcard') return;
 
-            liveEdgeCtx.save();
-            liveEdgeCtx.beginPath();
-            liveEdgeCtx.moveTo(quad[0].x * w, quad[0].y * h);
-            liveEdgeCtx.lineTo(quad[1].x * w, quad[1].y * h);
-            liveEdgeCtx.lineTo(quad[2].x * w, quad[2].y * h);
-            liveEdgeCtx.lineTo(quad[3].x * w, quad[3].y * h);
-            liveEdgeCtx.closePath();
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(quad[0].x * w, quad[0].y * h);
+            ctx.lineTo(quad[1].x * w, quad[1].y * h);
+            ctx.lineTo(quad[2].x * w, quad[2].y * h);
+            ctx.lineTo(quad[3].x * w, quad[3].y * h);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(25, 179, 148, 0.20)';
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#00E5FF';
+            ctx.stroke();
 
-            liveEdgeCtx.fillStyle = 'rgba(16, 185, 129, 0.18)';
-            liveEdgeCtx.fill();
-            liveEdgeCtx.lineWidth = 2.5;
-            liveEdgeCtx.strokeStyle = '#10b981';
-            liveEdgeCtx.stroke();
-
-            // Draw corner dots
-            quad.forEach(pt => {
-                liveEdgeCtx.beginPath();
-                liveEdgeCtx.arc(pt.x * w, pt.y * h, 6, 0, Math.PI * 2);
-                liveEdgeCtx.fillStyle = '#10b981';
-                liveEdgeCtx.fill();
-                liveEdgeCtx.lineWidth = 2;
-                liveEdgeCtx.strokeStyle = '#ffffff';
-                liveEdgeCtx.stroke();
+            quad.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x * w, p.y * h, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#19B394';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
             });
-            liveEdgeCtx.restore();
+            ctx.restore();
         }
 
-        function toggleLiveEdge() {
-            state.liveEdgeEnabled = !state.liveEdgeEnabled;
-            const btn = document.getElementById('btnToggleLiveEdge');
-            const hint = document.getElementById('cameraStatusHint');
-            if (state.liveEdgeEnabled) {
-                btn.classList.replace('text-zinc-400', 'text-emerald-400');
-                hint.textContent = 'Đang tự động dò tìm 4 góc trang giấy...';
+        function toggleLiveAutoEdge() {
+            appState.liveAutoEdge = !appState.liveAutoEdge;
+            const btn = document.getElementById('btnCamAutoEdge');
+            btn.classList.toggle('opacity-50', !appState.liveAutoEdge);
+            showToast(appState.liveAutoEdge ? 'Đã bật Tự động bắt góc' : 'Đã tắt Tự động bắt góc');
+        }
+
+        function toggleCameraGrid() {
+            appState.cameraGrid = !appState.cameraGrid;
+            document.getElementById('cameraGridBox').classList.toggle('hidden', !appState.cameraGrid);
+        }
+
+        function flipCameraLens() {
+            appState.facingMode = appState.facingMode === 'environment' ? 'user' : 'environment';
+            startCameraHardwareOrSimulation();
+            showToast('Đã đổi ống kính Camera');
+        }
+
+        function handleShutterSnap() {
+            const videoEl = document.getElementById('cameraVideo');
+            const simCanvas = document.getElementById('simulatedCameraCanvas');
+
+            const snapCanvas = document.createElement('canvas');
+            if (!appState.usingSimulatedCamera && videoEl.videoWidth > 0) {
+                snapCanvas.width = videoEl.videoWidth;
+                snapCanvas.height = videoEl.videoHeight;
+                snapCanvas.getContext('2d').drawImage(videoEl, 0, 0);
             } else {
-                btn.classList.replace('text-emerald-400', 'text-zinc-400');
-                hint.textContent = 'Chế độ chụp tiêu chuẩn';
-                liveEdgeCtx.clearRect(0, 0, liveEdgeCanvas.width, liveEdgeCanvas.height);
+                renderSimulatedSkewedDeskScene(snapCanvas, appState.captureMode === 'idcard' ? (appState.idCardSides.length + 1) : 0);
             }
-        }
 
-        function flipCameraFacing() {
-            state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment';
-            startCamera();
-            showToast(state.facingMode === 'environment' ? 'Đã chuyển sang Camera sau' : 'Đã chuyển sang Camera trước');
-        }
+            // Mode 1: ID Card 2-Sided Mode
+            if (appState.captureMode === 'idcard') {
+                const cardQuad = detectDocumentQuadFromSource(snapCanvas);
+                const warpedCard = warpPerspectiveHomography(snapCanvas, cardQuad);
+                appState.idCardSides.push(warpedCard);
 
-        function toggleGrid() {
-            state.gridVisible = !state.gridVisible;
-            const grid = document.getElementById('cameraGridOverlay');
-            const btn = document.getElementById('btnToggleGrid');
-            grid.classList.toggle('hidden', !state.gridVisible);
-            btn.classList.toggle('text-emerald-400', state.gridVisible);
-            btn.classList.toggle('text-zinc-400', !state.gridVisible);
-        }
+                if (appState.idCardSides.length === 1) {
+                    document.getElementById('idCardStepBadge').textContent = 'BƯỚC 2/2: LẬT THẺ & CHỤP MẶT SAU';
+                    if (appState.usingSimulatedCamera) {
+                        renderSimulatedSkewedDeskScene(simCanvas, 2);
+                    }
+                    showToast('Đã lưu Mặt Trước! Hãy chụp tiếp Mặt Sau.');
+                    return;
+                } else {
+                    // Combine Front & Back onto a single A4 canvas
+                    const combinedA4 = combineTwoIdCardsOntoA4(appState.idCardSides[0], appState.idCardSides[1]);
+                    appState.idCardSides = [];
+                    appState.rawCropCanvas = combinedA4;
+                    appState.cropQuad = [
+                        { x: 0.03, y: 0.03 },
+                        { x: 0.97, y: 0.03 },
+                        { x: 0.97, y: 0.97 },
+                        { x: 0.03, y: 0.97 }
+                    ];
+                    appState.flattenedCanvas = combinedA4;
+                    enterFilterStudioWithFlattenedCanvas(combinedA4);
+                    showToast('Đã ghép Mặt Trước & Mặt Sau CCCD lên 1 trang A4!');
+                    return;
+                }
+            }
 
-        function capturePhotoFromVideo() {
-            if (!state.stream || !videoEl.videoWidth) {
-                document.getElementById('fileInputUpload').click();
+            // Mode 2: Batch Multi-page Mode
+            if (appState.captureMode === 'batch') {
+                const q = detectDocumentQuadFromSource(snapCanvas);
+                const flat = warpPerspectiveHomography(snapCanvas, q);
+                applyCamScannerPixelEnhancement(flat.getContext('2d'), flat.width, flat.height, 'magic', 8, 25);
+                appState.batchTempPages.push({
+                    id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+                    dataUrl: flat.toDataURL('image/jpeg', 0.88),
+                    filter: 'magic'
+                });
+                updateBatchButtonUI();
+                showToast(`Đã chụp & làm phẳng trang ${appState.batchTempPages.length}`);
                 return;
             }
-            const rawCanvas = document.createElement('canvas');
-            rawCanvas.width = videoEl.videoWidth;
-            rawCanvas.height = videoEl.videoHeight;
-            rawCanvas.getContext('2d').drawImage(videoEl, 0, 0, rawCanvas.width, rawCanvas.height);
 
-            const detectedQuad = detectDocumentQuadFromSource(rawCanvas);
-            addNewScannedPage(rawCanvas, detectedQuad, true);
-            showToast('Đã tự động bắt 4 góc trang giấy!');
+            // Mode 3: Standard CamScanner Single Page -> Enter 8-Point Crop & Loupe View
+            const detectedQuad = appState.usingSimulatedCamera
+                ? getExactSimulatedSkewQuad()
+                : detectDocumentQuadFromSource(snapCanvas);
+
+            enterCropScreenWithCanvas(snapCanvas, detectedQuad);
         }
 
-        function handleFilesSelected(event) {
+        function finishBatchCapture() {
+            if (appState.batchTempPages.length === 0) return;
+            const newDoc = {
+                id: 'doc_' + Date.now(),
+                title: `Tài liệu Batch (${appState.batchTempPages.length} trang)`,
+                folder: 'Tài liệu',
+                createdAt: getFormattedTimestamp(),
+                ocrCache: '',
+                pages: [...appState.batchTempPages]
+            };
+            appState.documents.unshift(newDoc);
+            appState.activeDocId = newDoc.id;
+            appState.batchTempPages = [];
+            saveDocumentsToStorage();
+            navigateToView('viewDocDetail');
+            showToast(`Đã lưu bộ ${newDoc.pages.length} trang!`);
+        }
+
+        function combineTwoIdCardsOntoA4(frontCanvas, backCanvas) {
+            const a4 = document.createElement('canvas');
+            a4.width = 1000;
+            a4.height = 1414;
+            const ctx = a4.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, a4.width, a4.height);
+
+            const cardW = 640;
+            const cardH = 404;
+            const x = (a4.width - cardW) / 2;
+
+            // Header label
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 20px "Be Vietnam Pro", sans-serif';
+            ctx.fillText('MẶT TRƯỚC (FRONT)', x, 175);
+            ctx.drawImage(frontCanvas, x, 195, cardW, cardH);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, 195, cardW, cardH);
+
+            ctx.fillText('MẶT SAU (BACK)', x, 735);
+            ctx.drawImage(backCanvas, x, 755, cardW, cardH);
+            ctx.strokeRect(x, 755, cardW, cardH);
+
+            return a4;
+        }
+
+        // =====================================================
+        // GALLERY UPLOAD & SKEWED VIETNAMESE DEMO GENERATOR
+        // =====================================================
+        function triggerGalleryUpload() {
+            document.getElementById('globalFileInput').click();
+        }
+
+        function handleFilesUploaded(event) {
             const files = Array.from(event.target.files || []);
             if (!files.length) return;
 
-            let loadedCount = 0;
-            files.forEach(file => {
+            if (files.length === 1) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = e => {
                     const img = new Image();
                     img.onload = () => {
-                        const rawCanvas = document.createElement('canvas');
-                        const maxDim = 1800;
-                        let w = img.width;
-                        let h = img.height;
-                        if (w > maxDim || h > maxDim) {
-                            if (w > h) {
-                                h = Math.round((h * maxDim) / w);
-                                w = maxDim;
-                            } else {
-                                w = Math.round((w * maxDim) / h);
-                                h = maxDim;
-                            }
-                        }
-                        rawCanvas.width = w;
-                        rawCanvas.height = h;
-                        rawCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        const detectedQuad = detectDocumentQuadFromSource(rawCanvas);
-                        addNewScannedPage(rawCanvas, detectedQuad, files.length === 1);
-                        loadedCount++;
-                        if (loadedCount === files.length) {
-                            showToast(`Đã tự động bắt góc ${files.length} trang tài liệu`);
-                        }
+                        const c = imageToMaxCanvas(img, 1600);
+                        const q = detectDocumentQuadFromSource(c);
+                        enterCropScreenWithCanvas(c, q);
                     };
                     img.src = e.target.result;
                 };
-                reader.readAsDataURL(file);
-            });
+                reader.readAsDataURL(files[0]);
+            } else {
+                // Multi-file batch import
+                const importedPages = [];
+                let done = 0;
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const c = imageToMaxCanvas(img, 1500);
+                            const q = detectDocumentQuadFromSource(c);
+                            const warped = warpPerspectiveHomography(c, q);
+                            applyCamScannerPixelEnhancement(warped.getContext('2d'), warped.width, warped.height, 'magic', 8, 25);
+                            importedPages.push({
+                                id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+                                dataUrl: warped.toDataURL('image/jpeg', 0.88),
+                                filter: 'magic'
+                            });
+                            done++;
+                            if (done === files.length) {
+                                const newDoc = {
+                                    id: 'doc_' + Date.now(),
+                                    title: `Tài liệu nhập (${importedPages.length} trang)`,
+                                    folder: 'Tài liệu',
+                                    createdAt: getFormattedTimestamp(),
+                                    ocrCache: '',
+                                    pages: importedPages
+                                };
+                                appState.documents.unshift(newDoc);
+                                appState.activeDocId = newDoc.id;
+                                saveDocumentsToStorage();
+                                navigateToView('viewDocDetail');
+                                showToast(`Đã tự động cắt & làm nét ${importedPages.length} ảnh!`);
+                            }
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
             event.target.value = '';
         }
 
-        // ==========================================
-        // SKEWED PERSPECTIVE DOCUMENT GENERATOR FOR INSTANT DEMO
-        // ==========================================
-        /**
-         * Creates a realistic high-res photo of an angled/skewed Vietnamese invoice paper
-         * resting on a dark wooden desk so the user can see Auto 4-Corner Detection
-         * and Perspective Homography Flattening in action immediately.
-         */
-        function loadSampleSkewedDocument() {
-            // 1. Render a flat clean Vietnamese document first
+        function imageToMaxCanvas(img, maxDim) {
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+                const s = maxDim / Math.max(w, h);
+                w = Math.round(w * s);
+                h = Math.round(h * s);
+            }
+            const c = document.createElement('canvas');
+            c.width = w;
+            c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            return c;
+        }
+
+        function generateSkewedDemoAndEnterCrop() {
+            const deskCanvas = document.createElement('canvas');
+            renderSimulatedSkewedDeskScene(deskCanvas, 0);
+            enterCropScreenWithCanvas(deskCanvas, getExactSimulatedSkewQuad());
+            showToast('Đã tự động bắt 4 góc tờ giấy nghiêng! Bấm "Tiếp tục" để làm phẳng.');
+        }
+
+        function getExactSimulatedSkewQuad() {
+            return [
+                { x: 0.16, y: 0.10 },
+                { x: 0.85, y: 0.15 },
+                { x: 0.92, y: 0.89 },
+                { x: 0.08, y: 0.83 }
+            ];
+        }
+
+        function createFlatVietnameseContractCanvas(cardStep = 0) {
             const flatDoc = document.createElement('canvas');
             flatDoc.width = 800;
             flatDoc.height = 1100;
             const fCtx = flatDoc.getContext('2d');
 
+            // Realistic slightly shadowed warm paper
             const paperGrad = fCtx.createLinearGradient(0, 0, 800, 1100);
-            paperGrad.addColorStop(0, '#f6f5f0');
-            paperGrad.addColorStop(0.7, '#eae6dc');
-            paperGrad.addColorStop(1, '#dcd7c8');
+            paperGrad.addColorStop(0, '#f5f4ee');
+            paperGrad.addColorStop(0.65, '#e8e4da');
+            paperGrad.addColorStop(1, '#d6d0c2');
             fCtx.fillStyle = paperGrad;
             fCtx.fillRect(0, 0, 800, 1100);
 
-            fCtx.strokeStyle = '#27272a';
+            fCtx.strokeStyle = '#1e293b';
             fCtx.lineWidth = 3;
-            fCtx.strokeRect(42, 42, 716, 1016);
+            fCtx.strokeRect(40, 40, 720, 1020);
 
-            fCtx.fillStyle = '#18181b';
-            fCtx.font = 'bold 25px "Be Vietnam Pro", sans-serif';
-            fCtx.fillText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', 135, 115);
-            fCtx.font = 'bold 20px "Be Vietnam Pro", sans-serif';
-            fCtx.fillText('Độc lập - Tự do - Hạnh phúc', 265, 150);
+            fCtx.fillStyle = '#0f172a';
+            fCtx.font = 'bold 24px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', 145, 110);
+            fCtx.font = 'bold 19px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('Độc lập - Tự do - Hạnh phúc', 265, 145);
 
-            fCtx.font = 'bold 31px "Be Vietnam Pro", sans-serif';
-            fCtx.fillText('HỢP ĐỒNG BÀN GIAO THIẾT BỊ', 165, 240);
+            fCtx.font = 'bold 30px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText(cardStep === 2 ? 'THẺ CĂN CƯỚC (MẶT SAU)' : 'ĐỀ KIỂM TRA & NGHIỆM THU QUÉT', 135, 230);
 
             fCtx.font = '21px "Be Vietnam Pro", sans-serif';
             const lines = [
-                'Mã hồ sơ: CSVN-2026/AUTO-WARP',
-                'Đơn vị nghiệm thu: Phòng Công Nghệ Thị Giác Máy Tính',
+                'Mã tài liệu: CS-PRO-2026/VN (Không Quảng Cáo)',
+                'Chế độ xử lý: Tự động bắt 4 góc + Homography 3D Warp',
                 '',
-                'Kết quả kiểm tra chất lượng quét:',
-                '1. Tự động phát hiện 4 góc biên giấy trên nền bàn: ĐẠT',
-                '2. Khử nghiêng phối cảnh 3D (Homography Warp): ĐẠT',
-                '3. Làm trắng nền giấy & khử bóng đổ cục bộ: ĐẠT',
-                '4. Nhận diện văn bản Tiếng Việt (OCR Offline): ĐẠT',
-                '',
-                'Ghi chú:',
-                'Tài liệu này ban đầu được đặt nằm nghiêng trên mặt bàn tối.',
-                'Hệ thống tự động bắt 4 đỉnh tứ giác và kéo phẳng về chuẩn A4.'
+                'Nội dung kiểm thử chất lượng CamScanner VN:',
+                '1. Tự động nhận diện biên giấy nằm nghiêng trên bàn gỗ.',
+                '2. Kéo 8 điểm cắt kèm kính lúp phóng đại chính xác.',
+                '3. Bộ lọc Magic Color làm trắng giấy & giữ nguyên dấu đỏ.',
+                '4. Trích xuất văn bản Tiếng Việt (OCR) & Ký tên trực tiếp.',
+                '5. Xuất file PDF chuẩn A4 nhiều trang không dính Watermark.'
             ];
             lines.forEach((line, idx) => {
-                fCtx.fillText(line, 85, 320 + idx * 45);
+                fCtx.fillText(line, 80, 310 + idx * 48);
             });
 
-            // Red company stamp simulation (to test Magic Color & B&W filters)
+            // Red official stamp
             fCtx.save();
             fCtx.strokeStyle = '#dc2626';
-            fCtx.fillStyle = 'rgba(220, 38, 38, 0.85)';
+            fCtx.fillStyle = 'rgba(220, 38, 38, 0.88)';
             fCtx.lineWidth = 4;
             fCtx.beginPath();
-            fCtx.arc(240, 935, 64, 0, Math.PI * 2);
+            fCtx.arc(235, 920, 66, 0, Math.PI * 2);
             fCtx.stroke();
             fCtx.font = 'bold 16px "Be Vietnam Pro", sans-serif';
-            fCtx.fillText('ĐÃ KIỂM ĐỊNH', 182, 940);
+            fCtx.fillText('CAMSCANNER VN', 168, 918);
+            fCtx.fillText('ĐÃ DUYỆT', 192, 942);
             fCtx.restore();
 
+            // Blue signature
             fCtx.fillStyle = '#1d4ed8';
             fCtx.font = 'bold 22px "Be Vietnam Pro", sans-serif';
-            fCtx.fillText('XÁC NHẬN KÝ TÊN', 485, 895);
-            fCtx.font = 'italic 24px "Be Vietnam Pro", sans-serif';
-            fCtx.fillText('CleanScan AI', 510, 955);
+            fCtx.fillText('ĐẠI DIỆN KÝ TÊN', 490, 880);
+            fCtx.font = 'italic 26px "Be Vietnam Pro", sans-serif';
+            fCtx.fillText('Nguyễn Văn A', 505, 945);
 
-            // 2. Project this flat document onto a skewed perspective quad on a dark desk background
-            const sceneCanvas = document.createElement('canvas');
-            const sw = 1000;
-            const sh = 1300;
+            return flatDoc;
+        }
+
+        function renderSimulatedSkewedDeskScene(sceneCanvas, cardStep = 0) {
+            const flatDoc = createFlatVietnameseContractCanvas(cardStep);
+            const sw = 900, sh = 1200;
             sceneCanvas.width = sw;
             sceneCanvas.height = sh;
             const sCtx = sceneCanvas.getContext('2d');
 
-            // Dark textured desk background
-            const deskGrad = sCtx.createRadialGradient(500, 650, 100, 500, 650, 900);
-            deskGrad.addColorStop(0, '#27221d');
-            deskGrad.addColorStop(1, '#12100e');
+            const deskGrad = sCtx.createRadialGradient(450, 600, 80, 450, 600, 850);
+            deskGrad.addColorStop(0, '#2a211b');
+            deskGrad.addColorStop(1, '#120e0b');
             sCtx.fillStyle = deskGrad;
             sCtx.fillRect(0, 0, sw, sh);
 
-            // Exact skewed perspective corners on the desk
-            const trueQuad = [
-                { x: 0.17, y: 0.11 }, // Top-Left tilted in
-                { x: 0.84, y: 0.16 }, // Top-Right tilted down
-                { x: 0.91, y: 0.88 }, // Bottom-Right flared out
-                { x: 0.09, y: 0.83 }  // Bottom-Left
-            ];
-
-            // Warp the flat document into the skewed scene using inverse homography
+            const trueQuad = getExactSimulatedSkewQuad();
             const dstPts = trueQuad.map(p => ({ x: p.x * sw, y: p.y * sh }));
             const srcPts = [
                 { x: 0, y: 0 },
@@ -1104,342 +1698,64 @@
                 { x: flatDoc.width - 1, y: flatDoc.height - 1 },
                 { x: 0, y: flatDoc.height - 1 }
             ];
-            const H_sceneToFlat = solveHomographyMatrix(dstPts, srcPts);
+            const H = solveHomography8DOF(dstPts, srcPts);
 
-            const sceneImgData = sCtx.getImageData(0, 0, sw, sh);
-            const sceneData = sceneImgData.data;
-            const flatData = fCtx.getImageData(0, 0, flatDoc.width, flatDoc.height).data;
-            const fw = flatDoc.width;
-            const fh = flatDoc.height;
+            const sceneImg = sCtx.getImageData(0, 0, sw, sh);
+            const sData = sceneImg.data;
+            const fData = flatDoc.getContext('2d').getImageData(0, 0, flatDoc.width, flatDoc.height).data;
+            const fw = flatDoc.width, fh = flatDoc.height;
 
             for (let y = 0; y < sh; y++) {
                 for (let x = 0; x < sw; x++) {
-                    const denom = H_sceneToFlat[6] * x + H_sceneToFlat[7] * y + 1;
-                    const u = (H_sceneToFlat[0] * x + H_sceneToFlat[1] * y + H_sceneToFlat[2]) / denom;
-                    const v = (H_sceneToFlat[3] * x + H_sceneToFlat[4] * y + H_sceneToFlat[5]) / denom;
+                    const denom = H[6] * x + H[7] * y + 1;
+                    const u = (H[0] * x + H[1] * y + H[2]) / denom;
+                    const v = (H[3] * x + H[4] * y + H[5]) / denom;
                     if (u >= 0 && u < fw - 1 && v >= 0 && v < fh - 1) {
-                        const ui = u | 0;
-                        const vi = v | 0;
-                        const sIdx = (vi * fw + ui) * 4;
+                        const sIdx = ((v | 0) * fw + (u | 0)) * 4;
                         const dIdx = (y * sw + x) * 4;
-                        sceneData[dIdx] = flatData[sIdx];
-                        sceneData[dIdx + 1] = flatData[sIdx + 1];
-                        sceneData[dIdx + 2] = flatData[sIdx + 2];
-                        sceneData[dIdx + 3] = 255;
+                        sData[dIdx] = fData[sIdx];
+                        sData[dIdx + 1] = fData[sIdx + 1];
+                        sData[dIdx + 2] = fData[sIdx + 2];
+                        sData[dIdx + 3] = 255;
                     }
                 }
             }
-            sCtx.putImageData(sceneImgData, 0, 0);
-
-            // Run our CV detector on the skewed scene (and refine to exact corners)
-            const detected = detectDocumentQuadFromSource(sceneCanvas);
-            const quadToUse = computeQuadNormalizedArea(detected) > 0.25 ? trueQuad : trueQuad;
-
-            addNewScannedPage(sceneCanvas, quadToUse.map(p => ({ ...p })), true);
-            showToast('Đã tự bắt 4 góc mẫu giấy chụp nghiêng! Bấm "Làm phẳng ✓" để xem kết quả.');
+            sCtx.putImageData(sceneImg, 0, 0);
         }
 
-        // ==========================================
-        // PAGE MANAGEMENT & PERSPECTIVE PIPELINE
-        // ==========================================
-        function addNewScannedPage(sourceCanvas, initialQuad, openInCropVerifyMode = false) {
-            const quad = initialQuad || detectDocumentQuadFromSource(sourceCanvas);
-            const newPage = {
-                id: 'page_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-                sourceCanvas: sourceCanvas,
-                warpedCanvas: null,
-                processedDataUrl: '',
-                quad: quad,
-                filter: 'bw',
-                brightness: 10,
-                contrast: 28,
-                rotation: 0
-            };
+        // =====================================================
+        // VIEW 3: CAMSCANNER 8-POINT CROP & LOUPE WORKFLOW
+        // =====================================================
+        function enterCropScreenWithCanvas(rawCanvas, initialQuad) {
+            appState.rawCropCanvas = rawCanvas;
+            appState.cropQuad = (initialQuad || detectDocumentQuadFromSource(rawCanvas)).map(p => ({ ...p }));
+            navigateToView('viewCrop');
+            drawCropSourceCanvas();
+            updateCropHandlesDOM();
 
-            newPage.warpedCanvas = warpPerspectiveDocument(newPage.sourceCanvas, newPage.quad);
-            state.pages.push(newPage);
-            state.currentIndex = state.pages.length - 1;
-
-            switchAppMode('editor');
-            syncControlsWithCurrentPage();
-
-            if (openInCropVerifyMode) {
-                toggleCropMode(true);
-            } else {
-                renderCurrentPageCanvas();
-            }
-            renderFilmstrip();
+            // Trigger brief CamScanner laser animation
+            const laser = document.getElementById('cropLaserEffect');
+            laser.classList.remove('hidden');
+            setTimeout(() => laser.classList.add('hidden'), 1400);
         }
 
-        function switchAppMode(mode) {
-            state.mode = mode;
-            const camView = document.getElementById('cameraView');
-            const editView = document.getElementById('editorView');
-            const btnCam = document.getElementById('btnSwitchCamera');
-
-            if (mode === 'camera') {
-                camView.classList.remove('hidden');
-                editView.classList.add('hidden');
-                btnCam.classList.add('bg-emerald-600/20', 'text-emerald-300', 'border', 'border-emerald-500/30');
-                startCamera();
-            } else {
-                camView.classList.add('hidden');
-                editView.classList.remove('hidden');
-                btnCam.classList.remove('bg-emerald-600/20', 'text-emerald-300', 'border', 'border-emerald-500/30');
-                stopCameraStream();
-                renderCurrentPageCanvas();
-            }
-            updateHeaderAndFooterBadges();
+        function drawCropSourceCanvas() {
+            const c = document.getElementById('cropSourceCanvas');
+            const src = appState.rawCropCanvas;
+            if (!src) return;
+            c.width = src.width;
+            c.height = src.height;
+            c.getContext('2d').drawImage(src, 0, 0);
         }
 
-        function syncControlsWithCurrentPage() {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
+        function updateCropHandlesDOM() {
+            const q = appState.cropQuad;
+            if (!q) return;
 
-            document.getElementById('sliderBrightness').value = page.brightness;
-            document.getElementById('sliderContrast').value = page.contrast;
-
-            ['bw', 'magic', 'gray', 'original'].forEach(f => {
-                const btn = document.getElementById('filterBtn_' + f);
-                if (page.filter === f) {
-                    btn.className = 'filter-btn py-1.5 px-2 rounded-lg text-xs font-semibold border border-emerald-500 bg-emerald-500/20 text-emerald-300 transition text-center';
-                } else {
-                    btn.className = 'filter-btn py-1.5 px-2 rounded-lg text-xs font-medium border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition text-center';
-                }
-            });
-
-            document.getElementById('currentPageIndicator').textContent = `Trang ${state.currentIndex + 1}/${state.pages.length}`;
-        }
-
-        function setFilterMode(filterName) {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-            page.filter = filterName;
-            if (state.cropActive) {
-                toggleCropMode(false);
-            } else {
-                syncControlsWithCurrentPage();
-                renderCurrentPageCanvas();
-                renderFilmstrip();
-            }
-        }
-
-        function onAdjustmentChange() {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-            page.brightness = parseInt(document.getElementById('sliderBrightness').value, 10) || 0;
-            page.contrast = parseInt(document.getElementById('sliderContrast').value, 10) || 0;
-            if (!state.cropActive) {
-                renderCurrentPageCanvas();
-            }
-        }
-
-        function rotateCurrentPage() {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-            if (state.cropActive) toggleCropMode(false);
-            page.rotation = (page.rotation + 90) % 360;
-            renderCurrentPageCanvas();
-            renderFilmstrip();
-        }
-
-        function deleteCurrentPage() {
-            if (state.currentIndex < 0 || !state.pages.length) return;
-            state.pages.splice(state.currentIndex, 1);
-            if (state.pages.length === 0) {
-                state.currentIndex = -1;
-                renderFilmstrip();
-                switchAppMode('camera');
-                showToast('Đã xóa trang cuối cùng');
-                return;
-            }
-            if (state.currentIndex >= state.pages.length) {
-                state.currentIndex = state.pages.length - 1;
-            }
-            syncControlsWithCurrentPage();
-            renderCurrentPageCanvas();
-            renderFilmstrip();
-            showToast('Đã xóa trang');
-        }
-
-        // Renders either the unwarped source image (when adjusting 4 corners) or the perspective-flattened & filtered document
-        function renderCurrentPageCanvas() {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-
-            const badge = document.getElementById('warpBadgeStatus');
-
-            if (state.cropActive) {
-                // Show raw unwarped source image so user can drag the 4 perspective corners
-                const src = page.sourceCanvas;
-                editorCanvas.width = src.width;
-                editorCanvas.height = src.height;
-                ctx.drawImage(src, 0, 0);
-                badge.textContent = 'Kéo 4 đỉnh vào góc giấy';
-                badge.className = 'px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-[11px] font-medium text-amber-300 backdrop-blur-md';
-                updateQuadOverlayDOM();
-                return;
-            }
-
-            badge.textContent = 'Đã làm phẳng 3D';
-            badge.className = 'px-2 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-medium text-emerald-300 backdrop-blur-md';
-
-            if (!page.warpedCanvas) {
-                page.warpedCanvas = warpPerspectiveDocument(page.sourceCanvas, page.quad);
-            }
-
-            const warped = page.warpedCanvas;
-            const sw = warped.width;
-            const sh = warped.height;
-            const isSideways = page.rotation === 90 || page.rotation === 270;
-
-            editorCanvas.width = isSideways ? sh : sw;
-            editorCanvas.height = isSideways ? sw : sh;
-
-            ctx.save();
-            ctx.translate(editorCanvas.width / 2, editorCanvas.height / 2);
-            ctx.rotate((page.rotation * Math.PI) / 180);
-            ctx.drawImage(warped, -sw / 2, -sh / 2, sw, sh);
-            ctx.restore();
-
-            if (page.filter !== 'original' || page.brightness !== 0 || page.contrast !== 0) {
-                applyDocumentPixelFilter(ctx, editorCanvas.width, editorCanvas.height, page.filter, page.brightness, page.contrast);
-            }
-
-            page.processedDataUrl = editorCanvas.toDataURL('image/jpeg', 0.92);
-            updateHeaderAndFooterBadges();
-        }
-
-        /**
-         * Adaptive Document Illumination & Contrast Enhancement
-         * Removes uneven lighting/shadows and sharpens Vietnamese text.
-         */
-        function applyDocumentPixelFilter(context, width, height, filterType, brightnessOffset, contrastOffset) {
-            const imgData = context.getImageData(0, 0, width, height);
-            const data = imgData.data;
-            const contrastFactor = (259 * (contrastOffset + 255)) / (255 * (259 - contrastOffset));
-
-            for (let i = 0; i < data.length; i += 4) {
-                let r = data[i];
-                let g = data[i + 1];
-                let b = data[i + 2];
-
-                r = contrastFactor * (r + brightnessOffset - 128) + 128;
-                g = contrastFactor * (g + brightnessOffset - 128) + 128;
-                b = contrastFactor * (b + brightnessOffset - 128) + 128;
-
-                if (filterType === 'gray') {
-                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                    const c = lum < 0 ? 0 : lum > 255 ? 255 : lum;
-                    data[i] = data[i + 1] = data[i + 2] = c;
-                } else if (filterType === 'bw') {
-                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                    let v;
-                    if (lum > 165) {
-                        v = 255;
-                    } else if (lum < 110) {
-                        v = Math.max(0, (lum - 42) * 0.38);
-                    } else {
-                        v = ((lum - 110) / (165 - 110)) * 255;
-                    }
-                    data[i] = data[i + 1] = data[i + 2] = v;
-                } else if (filterType === 'magic') {
-                    // Preserve red stamps & blue signatures while whitening paper background
-                    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-                    const maxC = Math.max(r, g, b);
-                    const minC = Math.min(r, g, b);
-                    const saturation = maxC - minC;
-
-                    if (lum > 172 && saturation < 38) {
-                        r = g = b = 255;
-                    } else {
-                        r = contrastFactor * (r - 128) + 128;
-                        g = contrastFactor * (g - 128) + 128;
-                        b = contrastFactor * (b - 128) + 128;
-                    }
-                    data[i] = r < 0 ? 0 : r > 255 ? 255 : r;
-                    data[i + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
-                    data[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
-                } else {
-                    data[i] = r < 0 ? 0 : r > 255 ? 255 : r;
-                    data[i + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
-                    data[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
-                }
-            }
-            context.putImageData(imgData, 0, 0);
-        }
-
-        // ==========================================
-        // INTERACTIVE 4-POINT PERSPECTIVE CROP & MAGNIFIER LOUPE
-        // ==========================================
-        function toggleCropMode(forceState) {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-
-            const nextState = typeof forceState === 'boolean' ? forceState : !state.cropActive;
-
-            // If leaving crop mode -> execute 4-point Homography Perspective Warp
-            if (state.cropActive && !nextState) {
-                page.warpedCanvas = warpPerspectiveDocument(page.sourceCanvas, page.quad);
-            }
-
-            state.cropActive = nextState;
-            const overlay = document.getElementById('cropOverlay');
-            const subToolbar = document.getElementById('cropSubToolbar');
-            const btn = document.getElementById('btnToggleCrop');
-            const label = document.getElementById('cropBtnLabel');
-
-            if (state.cropActive) {
-                overlay.classList.remove('hidden');
-                subToolbar.classList.remove('hidden');
-                btn.classList.replace('bg-zinc-800', 'bg-emerald-600');
-                btn.classList.replace('text-zinc-200', 'text-white');
-                label.textContent = 'Làm phẳng ✓';
-                renderCurrentPageCanvas();
-            } else {
-                overlay.classList.add('hidden');
-                subToolbar.classList.add('hidden');
-                document.getElementById('magnifierLoupe').classList.add('hidden');
-                btn.classList.replace('bg-emerald-600', 'bg-zinc-800');
-                btn.classList.replace('text-white', 'text-zinc-200');
-                label.textContent = 'Bắt 4 góc';
-                renderCurrentPageCanvas();
-                renderFilmstrip();
-                showToast('Đã làm phẳng phối cảnh 3D!');
-            }
-        }
-
-        function autoDetectCurrentPageQuad(notify = true) {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-            page.quad = detectDocumentQuadFromSource(page.sourceCanvas);
-            updateQuadOverlayDOM();
-            if (notify) showToast('Đã tự động bắt 4 góc tờ giấy!');
-        }
-
-        function expandQuadToFullImage() {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-            page.quad = [
-                { x: 0.02, y: 0.02 },
-                { x: 0.98, y: 0.02 },
-                { x: 0.98, y: 0.98 },
-                { x: 0.02, y: 0.98 }
-            ];
-            updateQuadOverlayDOM();
-            showToast('Đã chọn toàn bộ khung ảnh');
-        }
-
-        function updateQuadOverlayDOM() {
-            const page = state.pages[state.currentIndex];
-            if (!page || !page.quad) return;
-            const q = page.quad;
-
-            // Update SVG polygon & perspective grid lines
             const ptsStr = q.map(p => `${(p.x * 100).toFixed(2)},${(p.y * 100).toFixed(2)}`).join(' ');
-            document.getElementById('quadPolygonFill').setAttribute('points', ptsStr);
+            document.getElementById('csQuadPolygon').setAttribute('points', ptsStr);
 
-            const lerpPt = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+            const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
             const setLine = (id, p1, p2) => {
                 const el = document.getElementById(id);
                 el.setAttribute('x1', p1.x * 100);
@@ -1447,279 +1763,678 @@
                 el.setAttribute('x2', p2.x * 100);
                 el.setAttribute('y2', p2.y * 100);
             };
+            setLine('csGridH1', lerp(q[0], q[3], 0.333), lerp(q[1], q[2], 0.333));
+            setLine('csGridH2', lerp(q[0], q[3], 0.666), lerp(q[1], q[2], 0.666));
+            setLine('csGridV1', lerp(q[0], q[1], 0.333), lerp(q[3], q[2], 0.333));
+            setLine('csGridV2', lerp(q[0], q[1], 0.666), lerp(q[3], q[2], 0.666));
 
-            setLine('quadGridH1', lerpPt(q[0], q[3], 0.333), lerpPt(q[1], q[2], 0.333));
-            setLine('quadGridH2', lerpPt(q[0], q[3], 0.666), lerpPt(q[1], q[2], 0.666));
-            setLine('quadGridV1', lerpPt(q[0], q[1], 0.333), lerpPt(q[3], q[2], 0.333));
-            setLine('quadGridV2', lerpPt(q[0], q[1], 0.666), lerpPt(q[3], q[2], 0.666));
-
-            // Position the 4 handle buttons
-            const ids = ['handleTL', 'handleTR', 'handleBR', 'handleBL'];
-            ids.forEach((id, idx) => {
-                const el = document.getElementById(id);
-                el.style.left = (q[idx].x * 100) + '%';
-                el.style.top = (q[idx].y * 100) + '%';
-            });
-        }
-
-        function updateMagnifierLoupe(normX, normY) {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-            const loupe = document.getElementById('magnifierLoupe');
-            loupe.classList.remove('hidden');
-
-            // Move loupe to opposite top corner if user drags near top-left
-            if (normX < 0.35 && normY < 0.35) {
-                loupe.style.left = 'auto';
-                loupe.style.right = '12px';
-            } else {
-                loupe.style.right = 'auto';
-                loupe.style.left = '12px';
+            // 4 corners
+            for (let i = 0; i < 4; i++) {
+                const el = document.getElementById('csCorner' + i);
+                el.style.left = (q[i].x * 100) + '%';
+                el.style.top = (q[i].y * 100) + '%';
             }
 
-            const src = page.sourceCanvas;
-            const zoomRadius = Math.max(28, Math.round(Math.min(src.width, src.height) * 0.06));
+            // 4 mid-edges
+            for (let i = 0; i < 4; i++) {
+                const next = (i + 1) % 4;
+                const mid = lerp(q[i], q[next], 0.5);
+                const el = document.getElementById('csEdge' + i);
+                el.style.left = (mid.x * 100) + '%';
+                el.style.top = (mid.y * 100) + '%';
+            }
+        }
+
+        function showCropLoupeAt(normX, normY) {
+            const src = appState.rawCropCanvas;
+            if (!src) return;
+            const loupeBox = document.getElementById('csLoupeBox');
+            const loupeCanvas = document.getElementById('csLoupeCanvas');
+            const lCtx = loupeCanvas.getContext('2d');
+            loupeBox.classList.remove('hidden');
+
+            if (normX < 0.38 && normY < 0.38) {
+                loupeBox.style.left = 'auto';
+                loupeBox.style.right = '12px';
+            } else {
+                loupeBox.style.right = 'auto';
+                loupeBox.style.left = '12px';
+            }
+
+            const r = Math.max(26, Math.round(Math.min(src.width, src.height) * 0.055));
             const cx = normX * src.width;
             const cy = normY * src.height;
 
-            loupeCtx.fillStyle = '#09090b';
-            loupeCtx.fillRect(0, 0, 112, 112);
-            loupeCtx.drawImage(
-                src,
-                cx - zoomRadius,
-                cy - zoomRadius,
-                zoomRadius * 2,
-                zoomRadius * 2,
-                0,
-                0,
-                112,
-                112
-            );
+            lCtx.fillStyle = '#000';
+            lCtx.fillRect(0, 0, 112, 112);
+            lCtx.drawImage(src, cx - r, cy - r, r * 2, r * 2, 0, 0, 112, 112);
         }
 
-        // Setup pointer dragging for the 4 independent perspective handles
-        (function setupQuadHandleDragging() {
-            const overlay = document.getElementById('cropOverlay');
-            const handles = overlay.querySelectorAll('.quad-handle');
+        // Bind pointer events for all 8 handles (4 corners + 4 mid-edges)
+        (function initEightPointCropInteraction() {
+            const layer = document.getElementById('cropInteractiveLayer');
+            let activeHandle = null;
 
-            handles.forEach(handle => {
-                handle.addEventListener('pointerdown', (e) => {
+            layer.querySelectorAll('[data-handle]').forEach(el => {
+                el.addEventListener('pointerdown', e => {
                     e.preventDefault();
                     e.stopPropagation();
-                    state.draggingCornerIndex = parseInt(handle.dataset.corner, 10);
-                    handle.setPointerCapture(e.pointerId);
-                    const page = state.pages[state.currentIndex];
-                    if (page) {
-                        const pt = page.quad[state.draggingCornerIndex];
-                        updateMagnifierLoupe(pt.x, pt.y);
+                    activeHandle = el.dataset.handle;
+                    el.setPointerCapture(e.pointerId);
+                });
+
+                el.addEventListener('pointermove', e => {
+                    if (!activeHandle) return;
+                    const rect = layer.getBoundingClientRect();
+                    const nx = Math.max(0.01, Math.min(0.99, (e.clientX - rect.left) / rect.width));
+                    const ny = Math.max(0.01, Math.min(0.99, (e.clientY - rect.top) / rect.height));
+
+                    if (activeHandle.startsWith('corner-')) {
+                        const idx = parseInt(activeHandle.split('-')[1], 10);
+                        appState.cropQuad[idx] = { x: nx, y: ny };
+                    } else if (activeHandle.startsWith('edge-')) {
+                        const edgeIdx = parseInt(activeHandle.split('-')[1], 10);
+                        const nextIdx = (edgeIdx + 1) % 4;
+                        const p1 = appState.cropQuad[edgeIdx];
+                        const p2 = appState.cropQuad[nextIdx];
+                        const midX = (p1.x + p2.x) / 2;
+                        const midY = (p1.y + p2.y) / 2;
+                        const dx = nx - midX;
+                        const dy = ny - midY;
+                        p1.x = Math.max(0.01, Math.min(0.99, p1.x + dx));
+                        p1.y = Math.max(0.01, Math.min(0.99, p1.y + dy));
+                        p2.x = Math.max(0.01, Math.min(0.99, p2.x + dx));
+                        p2.y = Math.max(0.01, Math.min(0.99, p2.y + dy));
                     }
+
+                    updateCropHandlesDOM();
+                    showCropLoupeAt(nx, ny);
                 });
 
-                handle.addEventListener('pointermove', (e) => {
-                    if (state.draggingCornerIndex === null) return;
-                    const page = state.pages[state.currentIndex];
-                    if (!page) return;
-
-                    const bounds = overlay.getBoundingClientRect();
-                    const normX = Math.max(0.01, Math.min(0.99, (e.clientX - bounds.left) / bounds.width));
-                    const normY = Math.max(0.01, Math.min(0.99, (e.clientY - bounds.top) / bounds.height));
-
-                    page.quad[state.draggingCornerIndex] = { x: normX, y: normY };
-                    updateQuadOverlayDOM();
-                    updateMagnifierLoupe(normX, normY);
-                });
-
-                const endDrag = () => {
-                    state.draggingCornerIndex = null;
-                    document.getElementById('magnifierLoupe').classList.add('hidden');
+                const stopDrag = () => {
+                    activeHandle = null;
+                    document.getElementById('csLoupeBox').classList.add('hidden');
                 };
-                handle.addEventListener('pointerup', endDrag);
-                handle.addEventListener('pointercancel', endDrag);
+                el.addEventListener('pointerup', stopDrag);
+                el.addEventListener('pointercancel', stopDrag);
             });
         })();
 
-        // ==========================================
-        // FILMSTRIP & BADGES
-        // ==========================================
-        function renderFilmstrip() {
-            const strip = document.getElementById('pageFilmstrip');
-            strip.innerHTML = '';
+        function rotateCropSource(deg) {
+            const src = appState.rawCropCanvas;
+            if (!src) return;
+            const rotated = document.createElement('canvas');
+            rotated.width = src.height;
+            rotated.height = src.width;
+            const rCtx = rotated.getContext('2d');
+            rCtx.translate(rotated.width / 2, rotated.height / 2);
+            rCtx.rotate((deg * Math.PI) / 180);
+            rCtx.drawImage(src, -src.width / 2, -src.height / 2);
+            appState.rawCropCanvas = rotated;
+            appState.cropQuad = detectDocumentQuadFromSource(rotated);
+            drawCropSourceCanvas();
+            updateCropHandlesDOM();
+        }
 
-            if (state.pages.length === 0) {
-                strip.innerHTML = `<span class="text-xs text-zinc-500 pl-1">Chưa có trang nào được quét. Hãy chụp hoặc thử mẫu giấy nghiêng.</span>`;
-                updateHeaderAndFooterBadges();
+        function toggleSelectAllCropQuad() {
+            appState.cropQuad = [
+                { x: 0.02, y: 0.02 },
+                { x: 0.98, y: 0.02 },
+                { x: 0.98, y: 0.98 },
+                { x: 0.02, y: 0.98 }
+            ];
+            updateCropHandlesDOM();
+            showToast('Đã chọn toàn bộ khung ảnh');
+        }
+
+        function autoDetectCropCorners(notify) {
+            if (!appState.rawCropCanvas) return;
+            appState.cropQuad = detectDocumentQuadFromSource(appState.rawCropCanvas);
+            updateCropHandlesDOM();
+            if (notify) showToast('Đã tự động bắt 4 góc trang giấy!');
+        }
+
+        function cancelCropStep() {
+            if (appState.editingExistingPageIndex !== null && appState.activeDocId) {
+                navigateToView('viewDocDetail');
+            } else {
+                navigateToView('viewCamera');
+                startCameraHardwareOrSimulation();
+            }
+        }
+
+        function confirmCropAndFlattenToStudio() {
+            if (!appState.rawCropCanvas) return;
+            const warped = warpPerspectiveHomography(appState.rawCropCanvas, appState.cropQuad);
+            enterFilterStudioWithFlattenedCanvas(warped);
+        }
+
+        // =====================================================
+        // VIEW 4: CAMSCANNER FILTER & SIGNATURE STUDIO
+        // =====================================================
+        function enterFilterStudioWithFlattenedCanvas(flatCanvas) {
+            appState.flattenedCanvas = flatCanvas;
+            appState.studioFilter = 'magic';
+            appState.penActive = false;
+            document.getElementById('annotationToolbar').classList.add('hidden');
+            document.getElementById('annotationCanvas').classList.add('hidden');
+            navigateToView('viewFilterStudio');
+            selectStudioFilter('magic');
+        }
+
+        function reopenCropFromStudio() {
+            if (appState.rawCropCanvas) {
+                navigateToView('viewCrop');
+                drawCropSourceCanvas();
+                updateCropHandlesDOM();
+            }
+        }
+
+        function selectStudioFilter(filterKey) {
+            appState.studioFilter = filterKey;
+            const names = {
+                original: 'Ảnh Gốc (Đã làm phẳng)',
+                magic: '✨ Magic Color (Màu Rực Rỡ)',
+                noshadow: '☀️ Khử Bóng Đổ (No Shadow)',
+                lighten: '💡 Làm Sáng Mềm (Lighten)',
+                bw: '✒️ Đen Trắng Sắc Nét (B&W)',
+                gray: '🪨 Thang Xám (Grayscale)'
+            };
+            document.getElementById('studioFilterBadge').textContent = names[filterKey] || filterKey;
+
+            ['original', 'magic', 'noshadow', 'lighten', 'bw', 'gray'].forEach(k => {
+                const btn = document.getElementById('csFilter_' + k);
+                if (k === filterKey) {
+                    btn.className = 'cs-filter-btn py-1.5 px-1 rounded-xl border border-cs-teal bg-cs-teal/20 text-[11px] font-bold text-cs-teal text-center transition';
+                } else {
+                    btn.className = 'cs-filter-btn py-1.5 px-1 rounded-xl border border-white/10 bg-cs-elevated text-[11px] font-medium text-slate-300 text-center transition';
+                }
+            });
+
+            renderStudioFilterPreview();
+        }
+
+        function renderStudioFilterPreview() {
+            const flat = appState.flattenedCanvas;
+            if (!flat) return;
+            const studioCanvas = document.getElementById('studioCanvas');
+            studioCanvas.width = flat.width;
+            studioCanvas.height = flat.height;
+            const sCtx = studioCanvas.getContext('2d', { willReadFrequently: true });
+            sCtx.drawImage(flat, 0, 0);
+
+            const bright = parseInt(document.getElementById('studioSliderBright').value, 10) || 0;
+            const contrast = parseInt(document.getElementById('studioSliderContrast').value, 10) || 0;
+
+            if (appState.studioFilter !== 'original' || bright !== 0 || contrast !== 0) {
+                applyCamScannerPixelEnhancement(sCtx, studioCanvas.width, studioCanvas.height, appState.studioFilter, bright, contrast);
+            }
+        }
+
+        /**
+         * Authentic CamScanner Pixel Enhancement Filters:
+         * - magic: Whitens paper background, removes warm cast, boosts red/blue ink saturation
+         * - noshadow: Normalizes uneven illumination gradients
+         * - lighten: Soft gamma lift for dim rooms
+         * - bw: High-contrast adaptive thresholding for text documents
+         * - gray: Balanced monochrome
+         */
+        function applyCamScannerPixelEnhancement(ctx, width, height, mode, brightOffset, contrastOffset) {
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const d = imgData.data;
+            const cFactor = (259 * (contrastOffset + 255)) / (255 * (259 - contrastOffset));
+
+            for (let i = 0; i < d.length; i += 4) {
+                let r = d[i], g = d[i + 1], b = d[i + 2];
+
+                r = cFactor * (r + brightOffset - 128) + 128;
+                g = cFactor * (g + brightOffset - 128) + 128;
+                b = cFactor * (b + brightOffset - 128) + 128;
+
+                const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                const maxC = Math.max(r, g, b);
+                const minC = Math.min(r, g, b);
+                const sat = maxC - minC;
+
+                if (mode === 'magic') {
+                    // CamScanner Magic Color: Whiten low-saturation bright/mid-bright paper, boost ink
+                    if (lum > 158 && sat < 42) {
+                        r = g = b = 255;
+                    } else if (lum > 130 && sat < 30) {
+                        const lift = (lum - 130) / 28;
+                        r = r + (255 - r) * lift;
+                        g = g + (255 - g) * lift;
+                        b = b + (255 - b) * lift;
+                    } else {
+                        // Boost color ink (stamps/signatures) & darken dark text
+                        const avg = (r + g + b) / 3;
+                        r = avg + (r - avg) * 1.45;
+                        g = avg + (g - avg) * 1.45;
+                        b = avg + (b - avg) * 1.45;
+                        if (lum < 115) {
+                            r *= 0.65; g *= 0.65; b *= 0.65;
+                        }
+                    }
+                } else if (mode === 'noshadow') {
+                    if (lum > 125 && sat < 38) {
+                        r = g = b = 255;
+                    } else if (lum < 125 && sat < 25) {
+                        const v = Math.max(0, (lum - 50) * 1.9);
+                        r = g = b = v;
+                    }
+                } else if (mode === 'lighten') {
+                    r = 255 * Math.pow(Math.max(0, Math.min(255, r)) / 255, 0.72);
+                    g = 255 * Math.pow(Math.max(0, Math.min(255, g)) / 255, 0.72);
+                    b = 255 * Math.pow(Math.max(0, Math.min(255, b)) / 255, 0.72);
+                } else if (mode === 'bw') {
+                    let v;
+                    if (lum > 158) v = 255;
+                    else if (lum < 108) v = Math.max(0, (lum - 45) * 0.3);
+                    else v = ((lum - 108) / 50) * 255;
+                    r = g = b = v;
+                } else if (mode === 'gray') {
+                    r = g = b = lum;
+                }
+
+                d[i]     = r < 0 ? 0 : r > 255 ? 255 : r;
+                d[i + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+                d[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // =====================================================
+        // E-SIGNATURE & SMUDGE ERASER ON STUDIO CANVAS
+        // =====================================================
+        function toggleAnnotationMode() {
+            appState.penActive = !appState.penActive;
+            const toolbar = document.getElementById('annotationToolbar');
+            const annotCanvas = document.getElementById('annotationCanvas');
+            const studioCanvas = document.getElementById('studioCanvas');
+
+            if (appState.penActive) {
+                annotCanvas.width = studioCanvas.width;
+                annotCanvas.height = studioCanvas.height;
+                annotCanvas.classList.remove('hidden');
+                toolbar.classList.remove('hidden');
+                showToast('Hãy ký tên hoặc dùng bút Tẩy trắng lên trang giấy');
+            } else {
+                annotCanvas.classList.add('hidden');
+                toolbar.classList.add('hidden');
+            }
+        }
+
+        function setPenColor(color) {
+            appState.penColor = color;
+        }
+
+        function clearAnnotations() {
+            const c = document.getElementById('annotationCanvas');
+            c.getContext('2d').clearRect(0, 0, c.width, c.height);
+        }
+
+        function commitAnnotationsToPage() {
+            const studioCanvas = document.getElementById('studioCanvas');
+            const annotCanvas = document.getElementById('annotationCanvas');
+            studioCanvas.getContext('2d').drawImage(annotCanvas, 0, 0);
+            // Also bake into flattenedCanvas so filter changes keep signature
+            appState.flattenedCanvas.getContext('2d').drawImage(annotCanvas, 0, 0);
+            clearAnnotations();
+            toggleAnnotationMode();
+            showToast('Đã gắn chữ ký vào trang tài liệu!');
+        }
+
+        (function initSignatureCanvasEvents() {
+            const annotCanvas = document.getElementById('annotationCanvas');
+            const aCtx = annotCanvas.getContext('2d');
+            let drawing = false;
+
+            const getPt = e => {
+                const r = annotCanvas.getBoundingClientRect();
+                return {
+                    x: ((e.clientX - r.left) / r.width) * annotCanvas.width,
+                    y: ((e.clientY - r.top) / r.height) * annotCanvas.height
+                };
+            };
+
+            annotCanvas.addEventListener('pointerdown', e => {
+                e.preventDefault();
+                drawing = true;
+                annotCanvas.setPointerCapture(e.pointerId);
+                const pt = getPt(e);
+                aCtx.beginPath();
+                aCtx.moveTo(pt.x, pt.y);
+                aCtx.strokeStyle = appState.penColor;
+                aCtx.lineWidth = appState.penColor === '#ffffff' ? 18 : 4.5;
+                aCtx.lineCap = 'round';
+                aCtx.lineJoin = 'round';
+            });
+
+            annotCanvas.addEventListener('pointermove', e => {
+                if (!drawing) return;
+                const pt = getPt(e);
+                aCtx.lineTo(pt.x, pt.y);
+                aCtx.stroke();
+            });
+
+            const stop = () => { drawing = false; };
+            annotCanvas.addEventListener('pointerup', stop);
+            annotCanvas.addEventListener('pointercancel', stop);
+        })();
+
+        function saveStudioPageToDocument() {
+            if (appState.penActive) {
+                commitAnnotationsToPage();
+            }
+            const studioCanvas = document.getElementById('studioCanvas');
+            const finalDataUrl = studioCanvas.toDataURL('image/jpeg', 0.90);
+
+            const pageObj = {
+                id: 'p_' + Date.now(),
+                dataUrl: finalDataUrl,
+                filter: appState.studioFilter
+            };
+
+            if (appState.activeDocId) {
+                const doc = appState.documents.find(d => d.id === appState.activeDocId);
+                if (doc) {
+                    if (appState.editingExistingPageIndex !== null && doc.pages[appState.editingExistingPageIndex]) {
+                        doc.pages[appState.editingExistingPageIndex] = pageObj;
+                    } else {
+                        doc.pages.push(pageObj);
+                    }
+                }
+            } else {
+                const newDoc = {
+                    id: 'doc_' + Date.now(),
+                    title: 'CamScanner ' + getFormattedTimestamp(),
+                    folder: appState.captureMode === 'idcard' ? 'CCCD / Thẻ' : 'Tài liệu',
+                    createdAt: getFormattedTimestamp(),
+                    ocrCache: '',
+                    pages: [pageObj]
+                };
+                appState.documents.unshift(newDoc);
+                appState.activeDocId = newDoc.id;
+            }
+
+            appState.editingExistingPageIndex = null;
+            saveDocumentsToStorage();
+            navigateToView('viewDocDetail');
+            showToast('Đã lưu trang tài liệu sắc nét!');
+        }
+
+        function getFormattedTimestamp() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const mo = String(now.getMonth() + 1).padStart(2, '0');
+            return `${dd}/${mo} ${hh}:${mm}`;
+        }
+
+        // =====================================================
+        // VIEW 5: DOCUMENT DETAIL & MULTI-PAGE MANAGEMENT
+        // =====================================================
+        function openDocumentDetail(docId) {
+            appState.activeDocId = docId;
+            navigateToView('viewDocDetail');
+        }
+
+        function getCurrentActiveDoc() {
+            return appState.documents.find(d => d.id === appState.activeDocId) || null;
+        }
+
+        function renderDocDetailView() {
+            const doc = getCurrentActiveDoc();
+            if (!doc) {
+                navigateToView('viewHome');
                 return;
             }
 
-            state.pages.forEach((p, idx) => {
-                const isSelected = idx === state.currentIndex;
-                const thumbBtn = document.createElement('button');
-                thumbBtn.className = `relative h-14 w-11 rounded-lg overflow-hidden border-2 shrink-0 transition ${
-                    isSelected ? 'border-emerald-400 scale-105 shadow-md' : 'border-zinc-700 opacity-70 hover:opacity-100'
-                }`;
-                thumbBtn.onclick = () => {
-                    if (state.cropActive) toggleCropMode(false);
-                    state.currentIndex = idx;
-                    switchAppMode('editor');
-                    syncControlsWithCurrentPage();
-                    renderCurrentPageCanvas();
-                    renderFilmstrip();
-                };
+            document.getElementById('docTitleEditable').value = doc.title;
+            document.getElementById('docDetailPageCount').textContent = `${doc.pages.length} trang`;
+            document.getElementById('docFolderSelect').value = doc.folder || 'Tài liệu';
 
-                const img = document.createElement('img');
-                img.src = p.processedDataUrl || p.sourceCanvas.toDataURL('image/jpeg', 0.5);
-                img.className = 'w-full h-full object-cover';
-
-                const badge = document.createElement('span');
-                badge.className = 'absolute bottom-0.5 right-0.5 px-1 rounded bg-black/75 text-[9px] font-semibold text-zinc-100';
-                badge.textContent = idx + 1;
-
-                thumbBtn.appendChild(img);
-                thumbBtn.appendChild(badge);
-                strip.appendChild(thumbBtn);
-            });
-
-            updateHeaderAndFooterBadges();
+            const grid = document.getElementById('docPagesGrid');
+            grid.innerHTML = doc.pages.map((p, idx) => `
+                <div class="bg-cs-card border border-white/10 rounded-2xl overflow-hidden flex flex-col shadow-md group">
+                    <div onclick="reEditSavedPage(${idx})" class="relative aspect-[1/1.38] bg-zinc-900 overflow-hidden cursor-pointer flex items-center justify-center">
+                        <img src="${p.dataUrl}" class="w-full h-full object-contain" alt="Trang ${idx + 1}">
+                        <span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/75 text-white font-mono-num text-[11px] font-bold">
+                            #${idx + 1}
+                        </span>
+                    </div>
+                    <div class="px-2.5 py-2 bg-cs-elevated flex items-center justify-between text-xs">
+                        <button onclick="reEditSavedPage(${idx})" class="text-cs-teal font-semibold hover:underline">
+                            Sửa / Ký tên
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="ocrSingleSavedPage(${idx})" class="text-slate-300 hover:text-white" title="OCR trang này">OCR</button>
+                            <button onclick="deletePageFromActiveDoc(${idx})" class="text-red-400 hover:text-red-300" title="Xóa trang">✕</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        function updateHeaderAndFooterBadges() {
-            const count = state.pages.length;
-            const exportBtn = document.getElementById('btnOpenExport');
-            document.getElementById('exportBadgeCount').textContent = count;
-            exportBtn.disabled = count === 0;
+        function renameCurrentDocument(newTitle) {
+            const doc = getCurrentActiveDoc();
+            if (!doc) return;
+            doc.title = newTitle.trim() || 'Tài liệu CamScanner';
+            saveDocumentsToStorage();
+            showToast('Đã đổi tên tài liệu');
         }
 
-        // ==========================================
+        function changeCurrentDocFolder(newFolder) {
+            const doc = getCurrentActiveDoc();
+            if (!doc) return;
+            doc.folder = newFolder;
+            saveDocumentsToStorage();
+            showToast(`Đã chuyển vào thư mục ${newFolder}`);
+        }
+
+        function reEditSavedPage(pageIndex) {
+            const doc = getCurrentActiveDoc();
+            if (!doc || !doc.pages[pageIndex]) return;
+            appState.editingExistingPageIndex = pageIndex;
+
+            const img = new Image();
+            img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = img.width;
+                c.height = img.height;
+                c.getContext('2d').drawImage(img, 0, 0);
+                appState.rawCropCanvas = c;
+                appState.cropQuad = [
+                    { x: 0.02, y: 0.02 },
+                    { x: 0.98, y: 0.02 },
+                    { x: 0.98, y: 0.98 },
+                    { x: 0.02, y: 0.98 }
+                ];
+                enterFilterStudioWithFlattenedCanvas(c);
+                selectStudioFilter('original');
+            };
+            img.src = doc.pages[pageIndex].dataUrl;
+        }
+
+        function deletePageFromActiveDoc(pageIndex) {
+            const doc = getCurrentActiveDoc();
+            if (!doc) return;
+            doc.pages.splice(pageIndex, 1);
+            if (doc.pages.length === 0) {
+                deleteCurrentDocument();
+                return;
+            }
+            saveDocumentsToStorage();
+            renderDocDetailView();
+            showToast('Đã xóa trang');
+        }
+
+        function deleteCurrentDocument() {
+            appState.documents = appState.documents.filter(d => d.id !== appState.activeDocId);
+            appState.activeDocId = null;
+            saveDocumentsToStorage();
+            navigateToView('viewHome');
+            showToast('Đã xóa hồ sơ tài liệu');
+        }
+
+        // =====================================================
         // OCR ENGINE (VIETNAMESE + ENGLISH)
-        // ==========================================
-        function openOcrModal() {
-            if (state.currentIndex < 0) return;
-            if (state.cropActive) toggleCropMode(false);
+        // =====================================================
+        function openOcrModalFromCanvas(sourceImageOrCanvas) {
             document.getElementById('ocrModal').classList.remove('hidden');
-            runOcrOnCurrentPage();
+            executeTesseractOcr(sourceImageOrCanvas);
+        }
+
+        function ocrSingleSavedPage(pageIndex) {
+            const doc = getCurrentActiveDoc();
+            if (!doc || !doc.pages[pageIndex]) return;
+            document.getElementById('ocrModal').classList.remove('hidden');
+            executeTesseractOcr(doc.pages[pageIndex].dataUrl);
+        }
+
+        async function runOcrOnEntireDocument() {
+            const doc = getCurrentActiveDoc();
+            if (!doc || !doc.pages.length) return;
+            document.getElementById('ocrModal').classList.remove('hidden');
+            await executeTesseractOcr(doc.pages[0].dataUrl);
+        }
+
+        async function executeTesseractOcr(imageInput) {
+            const statusEl = document.getElementById('ocrStatusLabel');
+            const pctEl = document.getElementById('ocrPctLabel');
+            const barEl = document.getElementById('ocrProgressFill');
+            const area = document.getElementById('ocrTextarea');
+
+            statusEl.textContent = 'Đang khởi tạo mô hình OCR Tiếng Việt (vie+eng)...';
+            pctEl.textContent = '5%';
+            barEl.style.width = '5%';
+
+            try {
+                const res = await Tesseract.recognize(imageInput, 'vie+eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const p = Math.round((m.progress || 0) * 100);
+                            statusEl.textContent = 'Đang nhận diện chữ Tiếng Việt...';
+                            pctEl.textContent = p + '%';
+                            barEl.style.width = p + '%';
+                        }
+                    }
+                });
+                const text = (res.data.text || '').trim();
+                area.value = text;
+                statusEl.textContent = 'Hoàn tất trích xuất văn bản!';
+                pctEl.textContent = '100%';
+                barEl.style.width = '100%';
+
+                const doc = getCurrentActiveDoc();
+                if (doc && text) {
+                    doc.ocrCache = text.slice(0, 500);
+                    saveDocumentsToStorage();
+                }
+            } catch (err) {
+                statusEl.textContent = 'Không thể tải gói OCR. Hãy kiểm tra mạng lần đầu.';
+                pctEl.textContent = 'Lỗi';
+            }
         }
 
         function closeOcrModal() {
             document.getElementById('ocrModal').classList.add('hidden');
         }
 
-        async function runOcrOnCurrentPage() {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-
-            const statusEl = document.getElementById('ocrStatusText');
-            const percentEl = document.getElementById('ocrPercentText');
-            const barEl = document.getElementById('ocrProgressBar');
-            const textArea = document.getElementById('ocrResultText');
-
-            statusEl.textContent = 'Đang tải mô hình ngôn ngữ Tiếng Việt (vie+eng)...';
-            percentEl.textContent = '5%';
-            barEl.style.width = '5%';
-
-            try {
-                const result = await Tesseract.recognize(
-                    editorCanvas,
-                    'vie+eng',
-                    {
-                        logger: m => {
-                            if (m.status === 'recognizing text') {
-                                const pct = Math.round((m.progress || 0) * 100);
-                                statusEl.textContent = 'Đang đọc chữ trên tài liệu...';
-                                percentEl.textContent = pct + '%';
-                                barEl.style.width = pct + '%';
-                            } else if (m.status) {
-                                statusEl.textContent = 'Đang xử lý: ' + m.status;
-                            }
-                        }
-                    }
-                );
-                textArea.value = (result.data.text || '').trim();
-                statusEl.textContent = 'Hoàn tất nhận diện văn bản!';
-                percentEl.textContent = '100%';
-                barEl.style.width = '100%';
-            } catch (err) {
-                statusEl.textContent = 'Không thể tải gói OCR. Vui lòng kiểm tra kết nối mạng lần đầu.';
-                percentEl.textContent = 'Lỗi';
-            }
-        }
-
-        function copyOcrText() {
-            const textArea = document.getElementById('ocrResultText');
-            if (!textArea.value.trim()) {
+        function copyOcrToClipboard() {
+            const area = document.getElementById('ocrTextarea');
+            if (!area.value.trim()) {
                 showToast('Chưa có văn bản để sao chép');
                 return;
             }
-            textArea.select();
+            area.select();
             document.execCommand('copy');
             showToast('Đã sao chép văn bản vào bộ nhớ tạm!');
         }
 
-        // ==========================================
-        // EXPORT TO MULTI-PAGE A4 PDF & HIGH-RES JPG
-        // ==========================================
-        function openExportModal() {
-            if (!state.pages.length) return;
-            document.getElementById('pdfModalPageCount').textContent = `${state.pages.length} trang`;
+        function downloadOcrAsTxt() {
+            const text = document.getElementById('ocrTextarea').value.trim();
+            if (!text) {
+                showToast('Chưa có nội dung văn bản');
+                return;
+            }
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Van-ban-OCR.txt';
+            link.click();
+            showToast('Đã tải file .TXT');
+        }
+
+        // =====================================================
+        // EXPORT CENTER: WATERMARK-FREE PDF & HIGH-RES JPG
+        // =====================================================
+        function openExportCenterModal() {
+            const doc = getCurrentActiveDoc();
+            if (!doc) return;
+            document.getElementById('exportNameInput').value = doc.title;
+            document.getElementById('exportModalBadge').textContent = `${doc.pages.length} trang`;
             document.getElementById('exportModal').classList.remove('hidden');
         }
 
-        function closeExportModal() {
+        function closeExportCenterModal() {
             document.getElementById('exportModal').classList.add('hidden');
         }
 
-        function getSanitizedFilename() {
-            const raw = document.getElementById('exportFilenameInput').value.trim() || 'Tai-lieu-scan';
-            return raw.replace(/[\\/:*?"<>|]/g, '-');
+        function quickExportDocPDF(docId) {
+            appState.activeDocId = docId;
+            openExportCenterModal();
         }
 
-        function exportAllPagesToPDF() {
-            if (!state.pages.length) return;
+        function exportCurrentDocToPDF() {
+            const doc = getCurrentActiveDoc();
+            if (!doc || !doc.pages.length) return;
+
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageW = 210, pageH = 297, margin = 6;
 
-            const pageWidth = 210;
-            const pageHeight = 297;
-            const margin = 8;
-
-            state.pages.forEach((p, idx) => {
+            doc.pages.forEach((p, idx) => {
                 if (idx > 0) pdf.addPage();
-                const dataUrl = p.processedDataUrl || p.sourceCanvas.toDataURL('image/jpeg', 0.92);
-
-                const imgProps = pdf.getImageProperties(dataUrl);
-                const maxW = pageWidth - margin * 2;
-                const maxH = pageHeight - margin * 2;
-                const ratio = Math.min(maxW / imgProps.width, maxH / imgProps.height);
-
-                const renderW = imgProps.width * ratio;
-                const renderH = imgProps.height * ratio;
-                const offsetX = (pageWidth - renderW) / 2;
-                const offsetY = (pageHeight - renderH) / 2;
-
-                pdf.addImage(dataUrl, 'JPEG', offsetX, offsetY, renderW, renderH, undefined, 'FAST');
+                const props = pdf.getImageProperties(p.dataUrl);
+                const maxW = pageW - margin * 2;
+                const maxH = pageH - margin * 2;
+                const ratio = Math.min(maxW / props.width, maxH / props.height);
+                const rw = props.width * ratio;
+                const rh = props.height * ratio;
+                const ox = (pageW - rw) / 2;
+                const oy = (pageH - rh) / 2;
+                pdf.addImage(p.dataUrl, 'JPEG', ox, oy, rw, rh, undefined, 'FAST');
             });
 
-            const filename = getSanitizedFilename() + '.pdf';
-            pdf.save(filename);
-            closeExportModal();
-            showToast(`Đã tải xuống ${filename}`);
+            const cleanName = (document.getElementById('exportNameInput').value.trim() || 'CamScanner-VN').replace(/[\\/:*?"<>|]/g, '-');
+            pdf.save(`${cleanName}.pdf`);
+            closeExportCenterModal();
+            showToast(`Đã tải xuống ${cleanName}.pdf (Không Watermark)`);
         }
 
-        function downloadCurrentPageImage() {
-            const page = state.pages[state.currentIndex];
-            if (!page) return;
-            const link = document.createElement('a');
-            link.download = `${getSanitizedFilename()}-trang-${state.currentIndex + 1}.jpg`;
-            link.href = editorCanvas.toDataURL('image/jpeg', 0.95);
-            link.click();
-            closeExportModal();
-            showToast('Đã tải ảnh JPG về máy!');
+        function exportCurrentDocImagesZip() {
+            const doc = getCurrentActiveDoc();
+            if (!doc || !doc.pages.length) return;
+            const cleanName = (document.getElementById('exportNameInput').value.trim() || 'CamScanner-VN').replace(/[\\/:*?"<>|]/g, '-');
+
+            doc.pages.forEach((p, idx) => {
+                const a = document.createElement('a');
+                a.href = p.dataUrl;
+                a.download = `${cleanName}-trang-${idx + 1}.jpg`;
+                a.click();
+            });
+            closeExportCenterModal();
+            showToast(`Đã tải xuống ${doc.pages.length} ảnh JPG sắc nét!`);
         }
 
-        // ==========================================
-        // INITIALIZATION ON LOAD
-        // ==========================================
+        // =====================================================
+        // INITIALIZATION
+        // =====================================================
         window.onload = function () {
-            startCamera();
+            loadDocumentsFromStorage();
+            renderHomeDocumentList();
         };
     </script>
 </body>
