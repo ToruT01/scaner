@@ -2,11 +2,17 @@
 <html lang="vi" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0b1315">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>CamScanner VN Pro — Không Quảng Cáo & Không Watermark</title>
+    <meta name="apple-mobile-web-app-title" content="CamScanner VN">
+    <meta name="application-name" content="CamScanner VN">
+    <link id="dynamicFavicon" rel="icon" type="image/png" href="">
+    <link id="dynamicAppleIcon" rel="apple-touch-icon" href="">
+    <link id="dynamicManifest" rel="manifest" href="">
+    <title>CamScanner VN Pro — App Quét Tài Liệu Độc Lập</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -62,6 +68,8 @@
             overflow: hidden;
             height: 100dvh;
             width: 100vw;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
         }
         ::-webkit-scrollbar {
             width: 4px;
@@ -162,12 +170,15 @@
                     <div>
                         <div class="flex items-center gap-1.5">
                             <h1 class="text-base font-bold tracking-tight text-white leading-none">CamScanner VN</h1>
-                            <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-cs-teal/20 text-cs-teal border border-cs-teal/40">PRO FREE</span>
+                            <span id="pwaStandaloneBadge" class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-cs-teal/20 text-cs-teal border border-cs-teal/40">PRO FREE</span>
                         </div>
                         <p class="text-[11px] text-slate-400 mt-0.5">Không quảng cáo • Không watermark • Offline</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5">
+                    <button onclick="openInstallAppModal()" class="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-cs-teal to-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-cs-teal/25 active:scale-95 transition">
+                        <span>📲 Cài App</span>
+                    </button>
                     <button onclick="toggleHomeLayout()" id="btnToggleLayout" class="p-2 rounded-xl bg-cs-elevated text-slate-300 hover:text-white border border-white/5 transition" title="Đổi chế độ xem Danh sách / Lưới">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
@@ -182,6 +193,23 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
                 <input id="searchDocInput" type="text" oninput="renderHomeDocumentList()" placeholder="Tìm tên tài liệu, đề thi, CCCD hoặc nội dung OCR..." class="w-full pl-9 pr-8 py-2 rounded-xl bg-cs-bg/90 border border-white/10 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cs-teal transition">
+            </div>
+
+            <!-- Smart Install Banner (Auto-hides if already installed as Standalone App) -->
+            <div id="homeInstallBanner" class="mt-2.5 p-2.5 rounded-xl bg-gradient-to-r from-cs-teal/20 via-emerald-500/15 to-cyan-500/15 border border-cs-teal/40 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-base shrink-0">📱</span>
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-bold text-white truncate">Cài CamScanner VN lên màn hình điện thoại</p>
+                        <p class="text-[10px] text-slate-300 truncate">Chạy độc lập Full màn hình • Tải file App .HTML / .APK</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button onclick="openInstallAppModal()" class="px-2.5 py-1 rounded-lg bg-cs-teal text-white text-[11px] font-bold shadow">
+                        Cài ngay
+                    </button>
+                    <button onclick="dismissInstallBanner()" class="p-1 text-slate-400 hover:text-white text-xs">✕</button>
+                </div>
             </div>
         </header>
 
@@ -267,7 +295,7 @@
     <!-- ===================================================== -->
     <section id="viewCamera" class="hidden flex-1 flex flex-col h-full bg-black z-20">
         <!-- Camera Top Utility Bar -->
-        <div class="h-13 px-4 py-2.5 bg-black/80 backdrop-blur-md flex items-center justify-between border-b border-white/10 shrink-0 z-20">
+        <div class="h-13 px-3 py-2.5 bg-black/80 backdrop-blur-md flex items-center justify-between border-b border-white/10 shrink-0 z-20">
             <button onclick="closeCameraToPreviousView()" class="p-1.5 rounded-lg text-slate-200 hover:bg-white/10 flex items-center gap-1 text-xs font-medium">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
@@ -275,14 +303,28 @@
                 <span>Đóng</span>
             </button>
 
-            <div class="flex items-center gap-2">
-                <button onclick="toggleLiveAutoEdge()" id="btnCamAutoEdge" class="px-2.5 py-1 rounded-full bg-cs-teal/20 border border-cs-teal text-cs-teal text-[11px] font-semibold flex items-center gap-1">
+            <div class="flex items-center gap-1.5">
+                <button onclick="toggleLiveAutoEdge()" id="btnCamAutoEdge" class="px-2 py-1 rounded-full bg-cs-teal/20 border border-cs-teal text-cs-teal text-[11px] font-semibold flex items-center gap-1">
                     <span class="w-2 h-2 rounded-full bg-cs-teal animate-pulse"></span>
                     <span>Tự bắt góc</span>
                 </button>
+                <button onclick="toggleAutoSnapMode()" id="btnCamAutoSnap" class="px-2 py-1 rounded-full bg-white/10 border border-white/15 text-slate-300 text-[11px] font-semibold flex items-center gap-1" title="Tự động chụp khi giữ yên 4 góc">
+                    <span>⚡ Tự chụp</span>
+                </button>
                 <button onclick="toggleCameraGrid()" id="btnCamGrid" class="p-1.5 rounded-lg bg-white/10 text-cs-teal" title="Lưới căn chỉnh">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <!-- Live Camera Viewfinder Stage -->
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+                <button onclick="flipCameraLens()" class="p-1.5 rounded-lg bg-white/10 text-slate-200 hover:text-white" title="Đổi camera trước/sau">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Camera Viewfinder Stage -->
         <div class="relative flex-1 overflow-hidden flex items-center justify-center bg-zinc-950">
             <video id="cameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
 
@@ -715,6 +757,104 @@
         </div>
     </div>
 
+    <!-- ===================================================== -->
+    <!-- MODAL: CÀI ĐẶT APP LÊN ĐIỆN THOẠI (PWA & APK HUB)     -->
+    <!-- ===================================================== -->
+    <div id="installAppModal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3">
+        <div class="w-full max-w-md bg-cs-card border border-cs-teal/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
+            <!-- Modal Header -->
+            <div class="px-4 py-3 bg-gradient-to-r from-cs-teal/20 to-transparent border-b border-white/10 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <img id="installModalIconPreview" src="" alt="App Icon" class="w-10 h-10 rounded-xl shadow-md border border-cs-teal/50 bg-cs-bg">
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Cài CamScanner VN Lên Điện Thoại</h3>
+                        <p class="text-[11px] text-cs-teal font-medium">Chạy Full màn hình • Không quảng cáo • Offline 100%</p>
+                    </div>
+                </div>
+                <button onclick="closeInstallAppModal()" class="p-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="p-4 overflow-y-auto space-y-3.5 text-xs">
+                <!-- Native 1-Tap PWA Install Button (Shown when Chrome triggers beforeinstallprompt) -->
+                <button id="btnNativePwaPrompt" onclick="triggerNativePwaInstall()" class="hidden w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cs-teal to-emerald-500 text-white font-bold text-sm items-center justify-center gap-2 shadow-lg shadow-cs-teal/30 active:scale-95 transition">
+                    <span>⚡ Bấm Cài Đặt Ngay Lên Màn Hình Chính (1 Chạm)</span>
+                </button>
+
+                <!-- METHOD 1: Tải File App Độc Lập (.HTML) -->
+                <div class="p-3.5 rounded-2xl bg-cs-bg border border-cs-teal/40 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-cs-teal/20 text-cs-teal font-bold text-[10px] uppercase">Cách 1 • Nhanh & Dễ Nhất</span>
+                        <span class="text-[10px] text-slate-400">Dung lượng ~85 KB</span>
+                    </div>
+                    <h4 class="text-xs font-bold text-white">Tải File App Độc Lập (<code class="text-cs-cyan">CamScanner_Pro_VN.html</code>) về máy</h4>
+                    <p class="text-[11px] text-slate-300 leading-relaxed">
+                        Toàn bộ ứng dụng (bắt 4 góc 60FPS, bộ lọc Magic Color, OCR, xuất PDF) được đóng gói gọn trong <b>1 file duy nhất</b>. Bạn tải về điện thoại, lưu vào máy hoặc gửi qua Zalo để bấm mở dùng bất cứ lúc nào!
+                    </p>
+                    <button onclick="downloadStandaloneAppFile()" class="w-full py-2.5 px-3 rounded-xl bg-cs-teal hover:bg-cs-tealDark text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <span>📥 Tải File App Độc Lập (CamScanner_Pro_VN.html)</span>
+                    </button>
+                </div>
+
+                <!-- METHOD 2: Cài Icon App Fullscreen lên Màn hình chính (PWA) -->
+                <div class="p-3.5 rounded-2xl bg-cs-bg border border-white/10 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-bold text-[10px] uppercase">Cách 2 • Chuẩn App Gốc Fullscreen</span>
+                        <span class="text-[10px] text-slate-400">Android & iPhone</span>
+                    </div>
+                    <h4 class="text-xs font-bold text-white">Thêm biểu tượng App ra Màn hình chính (Không thanh địa chỉ)</h4>
+
+                    <!-- OS Tabs -->
+                    <div class="grid grid-cols-2 gap-1.5 bg-cs-card p-1 rounded-xl border border-white/5">
+                        <button onclick="switchInstallGuideTab('android')" id="tabGuide_android" class="py-1.5 rounded-lg bg-cs-teal text-white font-bold text-[11px] transition">
+                            🤖 Android (Chrome)
+                        </button>
+                        <button onclick="switchInstallGuideTab('ios')" id="tabGuide_ios" class="py-1.5 rounded-lg text-slate-300 hover:text-white font-medium text-[11px] transition">
+                            🍎 iPhone (Safari)
+                        </button>
+                    </div>
+
+                    <div id="guideContent_android" class="space-y-1.5 text-[11px] text-slate-300 leading-relaxed pt-1">
+                        <p><b>Bước 1:</b> Nếu bạn đang xem trong khung Preview này, hãy bấm nút <b>Tải File App Độc Lập</b> ở trên rồi kéo thả file lên <span class="text-cs-teal font-semibold">tiiny.host</span> hoặc <span class="text-cs-teal font-semibold">app.netlify.com/drop</span> (miễn phí 5 giây có ngay link riêng).</p>
+                        <p><b>Bước 2:</b> Mở link đó bằng trình duyệt <b>Chrome</b> trên điện thoại Android.</p>
+                        <p><b>Bước 3:</b> Bấm dấu <b>⋮ (3 chấm góc phải trên)</b> → Chọn <b>"Cài đặt ứng dụng" (Install App)</b> hoặc <b>"Thêm vào màn hình chính"</b>. App sẽ có icon riêng ngoài màn hình và mở Full màn hình 100%!</p>
+                    </div>
+
+                    <div id="guideContent_ios" class="hidden space-y-1.5 text-[11px] text-slate-300 leading-relaxed pt-1">
+                        <p><b>Bước 1:</b> Tải file <code class="text-cs-cyan">CamScanner_Pro_VN.html</code> ở trên rồi đưa lên <span class="text-cs-teal font-semibold">tiiny.host</span> hoặc <span class="text-cs-teal font-semibold">netlify.com/drop</span> để lấy link HTTPS.</p>
+                        <p><b>Bước 2:</b> Mở link bằng <b>Safari</b> trên iPhone/iPad.</p>
+                        <p><b>Bước 3:</b> Bấm nút <b>Chia sẻ (biểu tượng mũi tên lên ở cạnh dưới)</b> → Cuộn xuống chọn <b>"Thêm vào MH chính" (Add to Home Screen)</b> → Bấm <b>Thêm</b>.</p>
+                    </div>
+                </div>
+
+                <!-- METHOD 3: Đóng gói thành file .APK cho Android -->
+                <div class="p-3.5 rounded-2xl bg-cs-bg border border-amber-500/30 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold text-[10px] uppercase">Cách 3 • Xuất File .APK Android</span>
+                        <span class="text-[10px] text-amber-300">Không cần biết lập trình</span>
+                    </div>
+                    <h4 class="text-xs font-bold text-white">Biến file vừa tải thành bộ cài <code class="text-amber-400">CamScannerVN.apk</code> trong 30 giây</h4>
+                    <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300 leading-relaxed">
+                        <li>Bấm nút <b>Tải File App Độc Lập (.HTML)</b> ở Cách 1 về máy.</li>
+                        <li>Truy cập trang đóng gói miễn phí <b>webintoapp.com</b> (chọn mục <i>HTML Files</i>) hoặc <b>pwabuilder.com</b>.</li>
+                        <li>Tải file <code class="text-cs-cyan">CamScanner_Pro_VN.html</code> lên → Bấm <b>Make App</b> để nhận file <b>.APK</b> cài trực tiếp vào mọi máy Android!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-4 py-2.5 bg-cs-bg/90 border-t border-white/10 flex items-center justify-between shrink-0">
+                <span class="text-[11px] text-slate-400">Đã nhúng sẵn Icon HD & PWA Manifest</span>
+                <button onclick="closeInstallAppModal()" class="px-4 py-1.5 rounded-xl bg-cs-elevated text-white font-semibold text-xs">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
     <div id="csToast" class="pointer-events-none fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-cs-card/95 border border-cs-teal text-xs font-medium text-white shadow-2xl opacity-0 transition-opacity duration-300 z-50 flex items-center gap-2 whitespace-nowrap">
         <span class="w-2 h-2 rounded-full bg-cs-teal"></span>
@@ -756,6 +896,9 @@
             stream: null,
             usingSimulatedCamera: false,
             liveAutoEdge: true,
+            autoSnapEnabled: false,
+            stableQuadFrames: 0,
+            lastStableQuad: null,
             cameraGrid: true,
             liveRaf: null,
             smoothLiveQuad: null,
@@ -763,6 +906,8 @@
             liveConfidence: 0,
             batchTempPages: [],      // Holds pages snapped in Batch mode
             idCardSides: [],         // Holds Front & Back canvases in ID Card mode
+            deferredPwaPrompt: null,
+            appIconDataUrl: '',
 
             // Crop & Perspective Studio pipeline state
             editingExistingPageIndex: null,
@@ -1605,6 +1750,7 @@
                         appState.targetLiveQuad = result.quad;
                         appState.liveConfidence = result.confidence;
                         updateLiveConfidenceBadge(result.confidence);
+                        evaluateAutoSnapStability(result.quad, result.confidence);
                     }
                 }
 
@@ -1632,11 +1778,56 @@
             const dotEl = document.getElementById('liveConfidenceDot');
             if (!textEl) return;
             if (conf >= 70) {
-                textEl.textContent = `Đã khóa 4 góc giấy • ${conf}%`;
+                const snapCountdown = (appState.autoSnapEnabled && appState.stableQuadFrames > 0)
+                    ? ` • Tự chụp ${Math.min(100, Math.round((appState.stableQuadFrames / 10) * 100))}%`
+                    : '';
+                textEl.textContent = `Đã khóa 4 góc giấy • ${conf}%${snapCountdown}`;
                 dotEl.className = 'w-2 h-2 rounded-full bg-cs-teal animate-ping';
             } else {
                 textEl.textContent = 'Đang dò mép giấy...';
                 dotEl.className = 'w-2 h-2 rounded-full bg-amber-400';
+            }
+        }
+
+        function toggleAutoSnapMode() {
+            appState.autoSnapEnabled = !appState.autoSnapEnabled;
+            appState.stableQuadFrames = 0;
+            const btn = document.getElementById('btnCamAutoSnap');
+            if (appState.autoSnapEnabled) {
+                btn.className = 'px-2 py-1 rounded-full bg-amber-500/25 border border-amber-400 text-amber-300 text-[11px] font-bold flex items-center gap-1';
+                showToast('Đã bật Tự chụp: Giữ yên máy ~1.1 giây khi khóa 4 góc để tự chụp!');
+            } else {
+                btn.className = 'px-2 py-1 rounded-full bg-white/10 border border-white/15 text-slate-300 text-[11px] font-semibold flex items-center gap-1';
+                showToast('Đã tắt chế độ Tự chụp');
+            }
+        }
+
+        function evaluateAutoSnapStability(quad, confidence) {
+            if (!appState.autoSnapEnabled || confidence < 78 || !quad) {
+                appState.stableQuadFrames = 0;
+                appState.lastStableQuad = quad;
+                return;
+            }
+            if (appState.lastStableQuad) {
+                let delta = 0;
+                for (let i = 0; i < 4; i++) {
+                    delta += Math.hypot(quad[i].x - appState.lastStableQuad[i].x, quad[i].y - appState.lastStableQuad[i].y);
+                }
+                if (delta < 0.09) {
+                    appState.stableQuadFrames++;
+                } else {
+                    appState.stableQuadFrames = Math.max(0, appState.stableQuadFrames - 2);
+                }
+            } else {
+                appState.stableQuadFrames = 1;
+            }
+            appState.lastStableQuad = quad.map(p => ({ ...p }));
+
+            // ~10 detection ticks (~1.1 seconds steady) triggers automatic shutter snap
+            if (appState.stableQuadFrames >= 10) {
+                appState.stableQuadFrames = 0;
+                showToast('⚡ Đã khóa nét 4 góc — Tự động chụp!');
+                handleShutterSnap();
             }
         }
 
@@ -2787,9 +2978,169 @@
         }
 
         // =====================================================
+        // PWA MANIFEST, APP ICON & STANDALONE INSTALLER ENGINE
+        // =====================================================
+        function generateHighResAppIcon(size = 512) {
+            const c = document.createElement('canvas');
+            c.width = size;
+            c.height = size;
+            const ctx = c.getContext('2d');
+
+            // Emerald/Teal CamScanner rounded icon background
+            const grad = ctx.createLinearGradient(0, 0, size, size);
+            grad.addColorStop(0, '#19B394');
+            grad.addColorStop(1, '#0d6e5b');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, size * 0.22);
+            ctx.fill();
+
+            // White document sheet inside icon
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.roundRect(size * 0.24, size * 0.18, size * 0.52, size * 0.64, size * 0.05);
+            ctx.fill();
+
+            // Cyan laser scan line across icon
+            ctx.fillStyle = '#00E5FF';
+            ctx.fillRect(size * 0.14, size * 0.48, size * 0.72, size * 0.045);
+
+            // CS Text mark
+            ctx.fillStyle = '#0b1315';
+            ctx.font = `900 ${Math.round(size * 0.22)}px "Be Vietnam Pro", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('CS', size * 0.5, size * 0.40);
+
+            ctx.fillStyle = '#19B394';
+            ctx.font = `800 ${Math.round(size * 0.10)}px "Be Vietnam Pro", sans-serif`;
+            ctx.fillText('PRO VN', size * 0.5, size * 0.66);
+
+            return c.toDataURL('image/png');
+        }
+
+        function setupEmbeddedPWA() {
+            const icon192 = generateHighResAppIcon(192);
+            const icon512 = generateHighResAppIcon(512);
+            appState.appIconDataUrl = icon192;
+
+            const fav = document.getElementById('dynamicFavicon');
+            const appleIcon = document.getElementById('dynamicAppleIcon');
+            const modalIcon = document.getElementById('installModalIconPreview');
+            if (fav) fav.href = icon192;
+            if (appleIcon) appleIcon.href = icon192;
+            if (modalIcon) modalIcon.src = icon192;
+
+            const manifestObj = {
+                name: 'CamScanner VN Pro — Quét Tài Liệu Siêu Tốc',
+                short_name: 'CamScanner VN',
+                description: 'Ứng dụng quét tài liệu, tự bắt 4 góc 60FPS, lọc Magic Color, OCR Tiếng Việt và xuất PDF không quảng cáo.',
+                start_url: './',
+                scope: './',
+                display: 'standalone',
+                orientation: 'portrait',
+                background_color: '#0b1315',
+                theme_color: '#0b1315',
+                icons: [
+                    { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+                    { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+                ]
+            };
+
+            const manifestJson = JSON.stringify(manifestObj);
+            const manifestUrl = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(manifestJson);
+            const manifestLink = document.getElementById('dynamicManifest');
+            if (manifestLink) manifestLink.setAttribute('href', manifestUrl);
+
+            // Detect if already running in Standalone installed mode
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            if (isStandalone) {
+                const banner = document.getElementById('homeInstallBanner');
+                if (banner) banner.classList.add('hidden');
+                const badge = document.getElementById('pwaStandaloneBadge');
+                if (badge) badge.textContent = 'APP ĐỘC LẬP';
+            }
+
+            // Listen for native Android Chrome installation prompt
+            window.addEventListener('beforeinstallprompt', e => {
+                e.preventDefault();
+                appState.deferredPwaPrompt = e;
+                const nativeBtn = document.getElementById('btnNativePwaPrompt');
+                if (nativeBtn) {
+                    nativeBtn.classList.remove('hidden');
+                    nativeBtn.classList.add('flex');
+                }
+            });
+        }
+
+        function openInstallAppModal() {
+            document.getElementById('installAppModal').classList.remove('hidden');
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            switchInstallGuideTab(isIOS ? 'ios' : 'android');
+        }
+
+        function closeInstallAppModal() {
+            document.getElementById('installAppModal').classList.add('hidden');
+        }
+
+        function dismissInstallBanner() {
+            const banner = document.getElementById('homeInstallBanner');
+            if (banner) banner.classList.add('hidden');
+        }
+
+        function switchInstallGuideTab(os) {
+            const btnAndroid = document.getElementById('tabGuide_android');
+            const btnIos = document.getElementById('tabGuide_ios');
+            const contentAndroid = document.getElementById('guideContent_android');
+            const contentIos = document.getElementById('guideContent_ios');
+
+            if (os === 'ios') {
+                btnIos.className = 'py-1.5 rounded-lg bg-cs-teal text-white font-bold text-[11px] transition';
+                btnAndroid.className = 'py-1.5 rounded-lg text-slate-300 hover:text-white font-medium text-[11px] transition';
+                contentIos.classList.remove('hidden');
+                contentAndroid.classList.add('hidden');
+            } else {
+                btnAndroid.className = 'py-1.5 rounded-lg bg-cs-teal text-white font-bold text-[11px] transition';
+                btnIos.className = 'py-1.5 rounded-lg text-slate-300 hover:text-white font-medium text-[11px] transition';
+                contentAndroid.classList.remove('hidden');
+                contentIos.classList.add('hidden');
+            }
+        }
+
+        async function triggerNativePwaInstall() {
+            if (!appState.deferredPwaPrompt) {
+                showToast('Trình duyệt hiện tại cần chọn "Thêm vào màn hình chính" ở menu');
+                return;
+            }
+            appState.deferredPwaPrompt.prompt();
+            const { outcome } = await appState.deferredPwaPrompt.userChoice;
+            if (outcome === 'accepted') {
+                showToast('🎉 Đã cài CamScanner VN lên màn hình chính điện thoại!');
+                closeInstallAppModal();
+            }
+            appState.deferredPwaPrompt = null;
+        }
+
+        function downloadStandaloneAppFile() {
+            closeInstallAppModal();
+            const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'CamScanner_Pro_VN.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+            showToast('📥 Đã tải file App độc lập CamScanner_Pro_VN.html!');
+        }
+
+        // =====================================================
         // INITIALIZATION
         // =====================================================
         window.onload = function () {
+            setupEmbeddedPWA();
             loadDocumentsFromStorage();
             renderHomeDocumentList();
         };
